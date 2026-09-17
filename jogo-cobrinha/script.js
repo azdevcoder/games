@@ -248,46 +248,42 @@ draw();
   zone.addEventListener("touchend", () => { tracking = false; }, { passive: true });
 })();
 
+// helper anti double-fire (touchstart + click sintetico)
+function onTap(el, fn) {
+  let lastTouch = 0;
+  el.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    lastTouch = Date.now();
+    fn(e);
+  }, { passive: false });
+  el.addEventListener("click", (e) => {
+    if (Date.now() - lastTouch < 600) return;
+    e.preventDefault();
+    fn(e);
+  });
+}
+
 // d-pad + botões
 document.querySelectorAll(".dpad .tbtn").forEach((btn) => {
-  const press = (e) => {
-    e.preventDefault();
+  const press = () => {
     const d = btn.dataset.dir;
     if (d === "up") setDir(0, -1);
     else if (d === "down") setDir(0, 1);
     else if (d === "left") setDir(-1, 0);
     else if (d === "right") setDir(1, 0);
   };
-  btn.addEventListener("touchstart", press, { passive: false });
-  btn.addEventListener("click", press);
+  onTap(btn, press);
 });
 
 (function initTouchButtons() {
   const bp = document.getElementById("btn-pause");
   const br = document.getElementById("btn-restart");
   const bs = document.getElementById("btn-speed");
-  if (bp) {
-    const h = (e) => { e.preventDefault(); if (!started) reset(); else togglePause(); };
-    bp.addEventListener("touchstart", h, { passive: false });
-    bp.addEventListener("click", h);
-  }
-  if (br) {
-    const h = (e) => { e.preventDefault(); reset(); };
-    br.addEventListener("touchstart", h, { passive: false });
-    br.addEventListener("click", h);
-  }
-  if (bs) {
-    const h = (e) => { e.preventDefault(); cycleSpeed(); };
-    bs.addEventListener("touchstart", h, { passive: false });
-    bs.addEventListener("click", h);
-  }
+  if (bp) onTap(bp, () => { if (!started) reset(); else togglePause(); });
+  if (br) onTap(br, () => reset());
+  if (bs) onTap(bs, () => cycleSpeed());
   // toque no overlay inicia / continua / reinicia
-  overlay.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    if (!started || !alive) reset();
-    else if (paused) togglePause();
-  }, { passive: false });
-  overlay.addEventListener("click", () => {
+  onTap(overlay, () => {
     if (!started || !alive) reset();
     else if (paused) togglePause();
   });
