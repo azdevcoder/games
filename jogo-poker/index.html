@@ -160,6 +160,8 @@ function startHand(){
   toAct = dealer; actionsLeft = 2;
   live = true; showdown = false;
   botActEl.textContent = '';
+  document.getElementById('pHandName').textContent = '';
+  document.getElementById('bHandName').textContent = '';
   if (STACK.p === 0 || STACK.b === 0){ runout(); return; }
   statusEl.textContent = (dealer === 'p' ? 'Você é o dealer (SB 1). ' : 'Bot é o dealer. ') + 'Pré-flop — sua vez?';
   render(false);
