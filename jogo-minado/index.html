@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>CAMPO MINADO</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="cabinet">
+    <header class="hud">
+      <a class="back" href="../index.html">‹ JOGOS</a>
+      <div class="title">◉ MINADO</div>
+      <div class="stats">
+        <span>💣 <b id="mines">10</b></span>
+        <span>⏱ <b id="time">0</b>s</span>
+        <span><b id="status">😊</b></span>
+      </div>
+    </header>
+    <div class="toolbar">
+      <button id="btn-mode" class="mode" aria-label="alternar modo">⛏ CAVAR</button>
+      <button id="btn-new" class="mode" aria-label="novo jogo">↻ NOVO</button>
+    </div>
+    <div id="board" class="board"></div>
+    <div id="overlay" class="overlay hidden">
+      <p id="overlay-title"></p>
+      <p class="hint">Toque em NOVO ou aqui para recomeçar · ESC volta</p>
+    </div>
+    <footer class="controls">
+      <span><b>Clique</b> revela · <b>botão direito / segurar</b> marca 🚩</span>
+      <span><b>R</b> novo jogo · <b>ESC</b> volta</span>
+    </footer>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>

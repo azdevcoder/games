@@ -25,10 +25,7 @@
   .sq.sel{outline:3px solid #f7ec59; outline-offset:-3px;}
   .sq.last{box-shadow:inset 0 0 0 3px #f7ec59aa;}
   .sq.must{box-shadow:inset 0 0 0 3px #ff7043;}
-  .mk{width:78%; height:78%; border-radius:50%; display:flex; align-items:center; justify-content:center; pointer-events:none; box-shadow:0 2px 4px #0009;}
-  .mk.w{background:radial-gradient(circle at 35% 30%, #ffffff, #d8c9a8 70%, #a89468); border:2px solid #5a4a33;}
-  .mk.b{background:radial-gradient(circle at 35% 30%, #5a5a5a, #1c1c1c 70%, #000); border:2px solid #cfc0a0;}
-  .mk .cr{color:#c80000; font-weight:bold; line-height:1; text-shadow:0 0 2px #fff;}
+  .sq svg.dsvg{width:82%; height:82%; pointer-events:none; filter:drop-shadow(0 2px 2px #0009);}
   .dot{position:absolute; width:26%; height:26%; border-radius:50%; background:#f7ec59cc; pointer-events:none;}
   .dot.cap{background:#ff3b30dd; width:34%; height:34%; box-shadow:0 0 0 3px #ff3b3055;}
   .coord{position:absolute; font-size:10px; font-weight:bold; opacity:.85; pointer-events:none;}
@@ -169,10 +166,11 @@
         for(var k=0;k<lastPath.length;k++) if(lastPath[k].r===dr&&lastPath[k].c===dc) d.classList.add('last');
         if(mustMap[key]&&!game.status().over) d.classList.add('must');
         if(p){
-          var m=document.createElement('div');
-          m.className='mk '+(p.c==='w'?'w':'b');
-          if(p.k){ var cr=document.createElement('span'); cr.className='cr'; cr.textContent='♛'; m.appendChild(cr); }
-          d.appendChild(m);
+          var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+          svg.setAttribute('viewBox','0 0 44 44'); svg.setAttribute('class','dsvg');
+          var u=document.createElementNS('http://www.w3.org/2000/svg','use');
+          u.setAttribute('href','#d'+p.c+(p.k?'k':''));
+          svg.appendChild(u); d.appendChild(svg);
         }
         if(tgtMap[key]){
           var dot=document.createElement('div');

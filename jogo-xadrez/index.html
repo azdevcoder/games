@@ -25,14 +25,15 @@
   .clock.flagged{border-color:#e33;}
   #board{display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr); aspect-ratio:1/1; border:2px solid #3a2f24; border-radius:6px; overflow:hidden; user-select:none; touch-action:manipulation;}
   .sq{position:relative; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0; aspect-ratio:1/1; overflow:hidden; cursor:pointer; line-height:1;}
-  .sq .pc{display:block; line-height:1; pointer-events:none;}
+  .sq svg.pc{width:84%; height:84%; pointer-events:none;}
+  .minipc{width:22px; height:22px; vertical-align:middle;}
+  .minipc.big{width:40px; height:40px;}
   .sq.light{background:var(--light);} .sq.dark{background:var(--dark);}
   .sq.sel{outline:4px solid var(--sel); outline-offset:-4px;}
   .sq.lastmove{box-shadow:inset 0 0 0 4px rgba(247,236,89,.85);}
   .sq.incheck{box-shadow:inset 0 0 0 5px #e33;}
   .sq .dot{position:absolute; width:26%; height:26%; border-radius:50%; background:var(--move); pointer-events:none;}
   .sq .ring{position:absolute; inset:6%; border-radius:50%; border:5px solid var(--cap); pointer-events:none;}
-  .sq .w{color:#ffffff; text-shadow:0 1px 2px #000,0 0 3px #000,1px 0 0 #000,-1px 0 0 #000,0 1px 0 #000,0 -1px 0 #000;} .sq .b{color:#000000; text-shadow:0 1px 1px #fff,0 0 3px #fff,1px 0 0 #fff,-1px 0 0 #fff,0 1px 0 #fff,0 -1px 0 #fff;}
   .coord{position:absolute; font-size:10px; font-family:monospace; opacity:.8; pointer-events:none;}
   .coord.rank{top:2px; left:3px;} .coord.file{bottom:2px; right:4px;}
   .light .coord{color:#7a5c3e;} .dark .coord{color:#f0d9b5;}
@@ -56,6 +57,40 @@
 </style>
 </head>
 <body>
+<!--SPRITE-START-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<linearGradient id="gW" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#e9e3d3"/><stop offset="1" stop-color="#b3a687"/>
+</linearGradient>
+<linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#777777"/><stop offset=".55" stop-color="#2b2b2b"/><stop offset="1" stop-color="#000000"/>
+</linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#c8920a"/>
+</linearGradient>
+<g id="geo-base"><path d="M12 36.5 h21 a2 2 0 0 1 2 2 v2 H10 v-2 a2 2 0 0 1 2-2 Z"/><ellipse cx="22.5" cy="34" rx="8.5" ry="2.6"/></g>
+<g id="geo-p"><circle cx="22.5" cy="14" r="7"/><path d="M17 26 Q22.5 23.5 28 26 L30 33.5 H15 Z"/><use href="#geo-base"/></g>
+<g id="geo-r"><path d="M14 17 V9 h3.5 v3 h3.25 V9 h3.5 v3 h3.25 V9 H31 v8 Z"/><path d="M16.5 17 h12 L27 33.5 H18 Z"/><use href="#geo-base"/></g>
+<g id="geo-n"><path d="M15 35 C15 29 16.5 25 19 21 L15.5 18.5 C14.5 17.5 15 16 16.5 15.5 L19 14.5 C19.5 12 21.5 10 24 10 L26.5 10 C28 10 28.5 11.5 27.5 12.7 L25.8 14.8 C27.3 17.5 28.5 21 28.5 25 L28.5 31 C28.5 33 27 35 25 35 Z"/><path d="M24.5 10.5 L23.5 6 L26.5 9 Z"/><circle cx="21" cy="17" r="1.4" fill="currentColor" stroke="none"/><use href="#geo-base"/></g>
+<g id="geo-b"><circle cx="22.5" cy="8.5" r="2.4"/><path d="M22.5 12 C17.5 17.5 15.8 22.5 15.8 27.5 H29.2 C29.2 22.5 27.5 17.5 22.5 12 Z"/><path d="M22.5 17.5 V24" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M17.5 27.5 h10 L26.5 33.5 h-8 Z"/><use href="#geo-base"/></g>
+<g id="geo-q"><circle cx="9.5" cy="12" r="2.1"/><circle cx="16" cy="10.5" r="2.1"/><circle cx="22.5" cy="9.5" r="2.1"/><circle cx="29" cy="10.5" r="2.1"/><circle cx="35.5" cy="12" r="2.1"/><path d="M10 33 L8.5 15 L15 20.5 L22.5 11.5 L30 20.5 L36.5 15 L35 33 Z"/><circle cx="22.5" cy="26" r="2" fill="url(#gold)" stroke="currentColor" stroke-width="1"/><use href="#geo-base"/></g>
+<g id="geo-k"><path d="M21.4 3.5 h2.2 v9 h-2.2 Z M18.4 6.3 h8.2 v2.2 h-8.2 Z"/><path d="M10 33 L9 17 L16 22 L22.5 15 L29 22 L36 17 L35 33 Z"/><circle cx="22.5" cy="26" r="2" fill="url(#gold)" stroke="currentColor" stroke-width="1"/><use href="#geo-base"/></g>
+</defs>
+<symbol id="wp" viewBox="0 0 45 45"><use href="#geo-p" fill="url(#gW)" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" color="#1a1a1a"/></symbol>
+<symbol id="bp" viewBox="0 0 45 45"><use href="#geo-p" fill="url(#gB)" stroke="#f0d9b5" stroke-width="1.5" stroke-linejoin="round" color="#f0d9b5"/></symbol>
+<symbol id="wn" viewBox="0 0 45 45"><use href="#geo-n" fill="url(#gW)" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" color="#1a1a1a"/></symbol>
+<symbol id="bn" viewBox="0 0 45 45"><use href="#geo-n" fill="url(#gB)" stroke="#f0d9b5" stroke-width="1.5" stroke-linejoin="round" color="#f0d9b5"/></symbol>
+<symbol id="wb" viewBox="0 0 45 45"><use href="#geo-b" fill="url(#gW)" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" color="#1a1a1a"/></symbol>
+<symbol id="bb" viewBox="0 0 45 45"><use href="#geo-b" fill="url(#gB)" stroke="#f0d9b5" stroke-width="1.5" stroke-linejoin="round" color="#f0d9b5"/></symbol>
+<symbol id="wr" viewBox="0 0 45 45"><use href="#geo-r" fill="url(#gW)" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" color="#1a1a1a"/></symbol>
+<symbol id="br" viewBox="0 0 45 45"><use href="#geo-r" fill="url(#gB)" stroke="#f0d9b5" stroke-width="1.5" stroke-linejoin="round" color="#f0d9b5"/></symbol>
+<symbol id="wq" viewBox="0 0 45 45"><use href="#geo-q" fill="url(#gW)" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" color="#1a1a1a"/></symbol>
+<symbol id="bq" viewBox="0 0 45 45"><use href="#geo-q" fill="url(#gB)" stroke="#f0d9b5" stroke-width="1.5" stroke-linejoin="round" color="#f0d9b5"/></symbol>
+<symbol id="wk" viewBox="0 0 45 45"><use href="#geo-k" fill="url(#gW)" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round" color="#1a1a1a"/></symbol>
+<symbol id="bk" viewBox="0 0 45 45"><use href="#geo-k" fill="url(#gB)" stroke="#f0d9b5" stroke-width="1.5" stroke-linejoin="round" color="#f0d9b5"/></symbol>
+</svg>
+<!--SPRITE-END-->
 <div class="wrap">
   <header class="top">
     <h1>♞ XADREZ</h1>
@@ -118,7 +153,6 @@
   var capW = document.getElementById('capW'), capB = document.getElementById('capB');
   var sel = null, legalCache = [], flipped = false, lastMove = null;
 
-  var UNI = { w:{k:'♔',q:'♕',r:'♖',b:'♗',n:'♘',p:'♙'}, b:{k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'} };
   var REASONS = { checkmate:'XEQUE-MATE', stalemate:'AFOGAMENTO (empate)', fifty:'EMPATE — regra dos 50 lances', threefold:'EMPATE — tripla repetição', material:'EMPATE — material insuficiente' };
   var LEVEL_NAMES = { 'muito-facil':'Muito Fácil', 'facil':'Fácil', 'medio':'Médio', 'dificil':'Difícil', 'muito-dificil':'Muito Difícil' };
 
@@ -218,7 +252,7 @@
         var d = document.createElement('div');
         d.className = 'sq ' + (((m.r+m.c)%2===0)?'dark':'light');
         d.dataset.r = m.r; d.dataset.c = m.c;
-        if (p){ var s=document.createElement('span'); s.textContent = UNI[p.c][p.t]; s.className = p.c + ' pc'; d.appendChild(s); }
+        if (p){ var svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('viewBox','0 0 45 45'); svg.setAttribute('class','pc'); var u=document.createElementNS('http://www.w3.org/2000/svg','use'); u.setAttribute('href','#'+p.c+p.t); svg.appendChild(u); d.appendChild(svg); }
         if (sel && sel.r===m.r && sel.c===m.c) d.classList.add('sel');
         if (lastMove && ((lastMove.from.r===m.r&&lastMove.from.c===m.c)||(lastMove.to.r===m.r&&lastMove.to.c===m.c))) d.classList.add('lastmove');
         if (kingChk && kingChk.r===m.r && kingChk.c===m.c) d.classList.add('incheck');
@@ -263,24 +297,11 @@
     movesEl.innerHTML = html || '<span style="color:#888">Nenhum lance ainda.</span>';
     movesEl.scrollTop = movesEl.scrollHeight;
     var caps = game.captured();
-    capW.textContent = caps.byWhite.length ? caps.byWhite.map(function(t){return UNI.b[t];}).join(' ') : '—';
-    capB.textContent = caps.byBlack.length ? caps.byBlack.map(function(t){return UNI.w[t];}).join(' ') : '—';
+    capW.innerHTML = caps.byWhite.length ? caps.byWhite.map(function(t){return '<svg class="minipc" viewBox="0 0 45 45"><use href="#b'+t+'"/></svg>';}).join(' ') : '—';
+    capB.innerHTML = caps.byBlack.length ? caps.byBlack.map(function(t){return '<svg class="minipc" viewBox="0 0 45 45"><use href="#w'+t+'"/></svg>';}).join(' ') : '—';
     levelEl.disabled = (botColor() === null);
     updateClockUI();
-    fitPieces();
   }
-
-  // Pecas com tamanho fixo por casa: mede a casa real e aplica px,
-  // em vez de clamp(vw) que variava por glifo/viewport.
-  function fitPieces(){
-    var sq = boardEl.querySelector('.sq');
-    if (!sq) return;
-    var s = Math.floor(sq.clientWidth * 0.74);
-    if (!s || s < 8) return;
-    var pcs = boardEl.querySelectorAll('.pc');
-    for (var i = 0; i < pcs.length; i++) pcs[i].style.fontSize = s + 'px';
-  }
-  window.addEventListener('resize', fitPieces);
 
   function gameEnded(){ return flag || game.status().over; }
 
@@ -316,7 +337,7 @@
     var ov=document.getElementById('promo'), opts=document.getElementById('promoOpts');
     opts.innerHTML='';
     ['q','r','b','n'].forEach(function(t){
-      var b=document.createElement('button'); b.textContent=UNI[color][t];
+      var b=document.createElement('button'); b.innerHTML='<svg class="minipc big" viewBox="0 0 45 45"><use href="#'+color+t+'"/></svg>';
       b.onclick=function(){ ov.style.display='none'; cb(t); };
       opts.appendChild(b);
     });

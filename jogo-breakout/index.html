@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>BREAKOUT RETRO</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="cabinet">
+    <header class="hud">
+      <a class="back" href="../index.html">‹ JOGOS</a>
+      <div class="title">◉ BREAKOUT</div>
+      <div class="stats">
+        <span>PONTOS <b id="score">0</b></span>
+        <span>VIDAS <b id="lives">3</b></span>
+        <span>FASE <b id="level">1</b></span>
+      </div>
+    </header>
+    <div class="screen-wrap" id="touch-zone">
+      <canvas id="game" width="400" height="480"></canvas>
+      <div id="overlay" class="overlay">
+        <p id="overlay-title">TOQUE PARA COMEÇAR</p>
+        <p class="hint">Arraste ou ← → move · ESPAÇO lança/pausa · ESC volta</p>
+      </div>
+    </div>
+    <footer class="controls">
+      <span>⬅➡ / arraste mover</span>
+      <span><b>ESPAÇO</b> lança/pausa</span>
+      <span><b>R</b> reinicia</span>
+      <span><b>ESC</b> volta</span>
+    </footer>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
