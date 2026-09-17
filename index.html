@@ -51,10 +51,27 @@
     p.sub { color: #9dffb8; font-size: 13px; letter-spacing: 3px; margin-top: 6px; }
     .press {
       color: #ffee33; font-weight: bold; letter-spacing: 3px; font-size: 14px;
-      margin: 12px 0 16px; text-shadow: 0 0 8px #ffee33;
+      margin: 12px 0 12px; text-shadow: 0 0 8px #ffee33;
       animation: blink 1.1s steps(2, start) infinite;
     }
     @keyframes blink { to { visibility: hidden; } }
+    .filterbar {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      margin-bottom: 6px;
+    }
+    .filter {
+      background: #000; color: #9dffb8; border: 2px solid #2f5f2f; border-radius: 20px;
+      padding: 7px 14px; font-family: inherit; font-size: 12px; font-weight: bold;
+      letter-spacing: 2px; cursor: pointer; touch-action: manipulation;
+      transition: transform .12s, box-shadow .12s;
+    }
+    .filter:hover { transform: translateY(-1px); }
+    .filter.active[data-f="all"]    { color: #33ff66; border-color: #33ff66; box-shadow: 0 0 10px rgba(51,255,102,.5); background: #062b12; }
+    .filter.active[data-f="arcade"] { color: #ff3df0; border-color: #ff3df0; box-shadow: 0 0 10px rgba(255,61,240,.5); background: #2b0627; }
+    .filter.active[data-f="board"]  { color: #ffee33; border-color: #ffee33; box-shadow: 0 0 10px rgba(255,238,51,.5); background: #2b2706; }
+    .filter.active[data-f="cards"]  { color: #ff5555; border-color: #ff5555; box-shadow: 0 0 10px rgba(255,85,85,.5); background: #2b0606; }
+    .filter.active[data-f="puzzle"] { color: #33ccff; border-color: #33ccff; box-shadow: 0 0 10px rgba(51,204,255,.5); background: #06232b; }
+    .count { font-size: 11px; letter-spacing: 2px; color: #9dffb8; margin-bottom: 14px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; text-align: left; }
     a.card {
       --ac: #33ff66;
@@ -75,6 +92,9 @@
       outline: none;
     }
     a.card:active { transform: scale(.98); }
+    a.card.hidden { display: none; }
+    a.card.pop { animation: pop .25s ease-out; }
+    @keyframes pop { from { transform: scale(.94); opacity: 0; } }
     a.card .name { display: block; font-weight: bold; font-size: 16px; letter-spacing: 1px; color: var(--ac); text-shadow: 0 0 8px var(--ac); margin: 2px 0 6px; }
     a.card small { display: block; font-weight: normal; color: #9dffb8; font-size: 11.5px; line-height: 1.45; }
     a.card svg.ic { width: 30px; height: 30px; vertical-align: -7px; margin-right: 4px; color: var(--ac); filter: drop-shadow(0 0 4px var(--ac)); }
@@ -110,6 +130,14 @@
       <p class="sub">16 GAMES IN 1</p>
     </div>
     <p class="press">★ PRESS START · ESCOLHA SEU JOGO ★</p>
+    <div class="filterbar" role="group" aria-label="filtrar por tipo de jogo">
+      <button class="filter active" data-f="all">TODOS</button>
+      <button class="filter" data-f="arcade">ARCADE</button>
+      <button class="filter" data-f="board">TABULEIRO</button>
+      <button class="filter" data-f="cards">CARTAS</button>
+      <button class="filter" data-f="puzzle">PUZZLE</button>
+    </div>
+    <p class="count" id="count">16 JOGOS</p>
     <div class="grid">
       <a class="card g-arcade" href="jogo-cobrinha/index.html">
         <span class="badge">ARCADE</span>
@@ -257,6 +285,29 @@
       }
       var cards = document.querySelectorAll("a.card");
       for (var i = 0; i < cards.length; i++) cards[i].addEventListener("click", blip);
+    })();
+    // filtro por tipo de jogo
+    (function () {
+      var btns = document.querySelectorAll(".filter");
+      var cards = document.querySelectorAll("a.card");
+      var count = document.getElementById("count");
+      var names = { all: "JOGOS", arcade: "ARCADE", board: "TABULEIRO", cards: "CARTAS", puzzle: "PUZZLE" };
+      function apply(f) {
+        var n = 0;
+        for (var i = 0; i < cards.length; i++) {
+          var show = f === "all" || cards[i].classList.contains("g-" + f);
+          cards[i].classList.toggle("hidden", !show);
+          cards[i].classList.remove("pop");
+          if (show) { n++; void cards[i].offsetWidth; cards[i].classList.add("pop"); }
+        }
+        count.textContent = n + (n === 1 ? " JOGO · " : " JOGOS · ") + names[f];
+      }
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener("click", function () {
+          for (var j = 0; j < btns.length; j++) btns[j].classList.toggle("active", btns[j] === this);
+          apply(this.dataset.f);
+        });
+      }
     })();
   </script>
 </body>
