@@ -79,6 +79,10 @@ body {
   touch-action: manipulation;
 }
 .mode.active { background: #062b12; }
+.mode svg, .stats svg.ic, .controls svg.ic { width: 20px; height: 20px; vertical-align: -4px; }
+#status { display: inline-flex; align-items: center; }
+#status svg { width: 24px; height: 24px; }
+.cell svg { width: 72%; height: 72%; pointer-events: none; }
 
 .board {
   display: grid;

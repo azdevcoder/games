@@ -9,6 +9,14 @@ const btnNew = document.getElementById("btn-new");
 
 const N = 9, MINES = 10;
 
+// Ícones SVG próprios (estilo arcade verde do jogo)
+const FACE_OK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#062b12" stroke="#33ff66" stroke-width="2"/><circle cx="9" cy="10" r="1.4" fill="#33ff66"/><circle cx="15" cy="10" r="1.4" fill="#33ff66"/><path d="M7.5 14.5c1.2 2 2.8 3 4.5 3s3.3-1 4.5-3" fill="none" stroke="#33ff66" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const FACE_DEAD = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#550000" stroke="#ff5555" stroke-width="2"/><path d="M7.6 8.6l2.8 2.8M10.4 8.6l-2.8 2.8M13.6 8.6l2.8 2.8M16.4 8.6l-2.8 2.8" stroke="#ff5555" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17h8" stroke="#ff5555" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const FACE_WIN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#062b12" stroke="#ffee33" stroke-width="2"/><rect x="5" y="8.5" width="5.4" height="4.2" rx="1.6" fill="#111" stroke="#ffee33" stroke-width="1.4"/><rect x="13.6" y="8.5" width="5.4" height="4.2" rx="1.6" fill="#111" stroke="#ffee33" stroke-width="1.4"/><path d="M10.4 10.2h3.2" stroke="#ffee33" stroke-width="1.4"/><path d="M7.5 15.5c1.2 1.6 2.8 2.4 4.5 2.4s3.3-.8 4.5-2.4" fill="none" stroke="#ffee33" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ICON_BOMB = '<svg viewBox="0 0 24 24"><path d="M14.5 9.5L18 6" stroke="#9dffb8" stroke-width="2" stroke-linecap="round"/><path d="M20.5 2.5v4M18.5 4.5h4" stroke="#ffee33" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="15" r="6.5" fill="#1a2b1a" stroke="#33ff66" stroke-width="1.8"/><circle cx="7.8" cy="12.8" r="1.5" fill="#9dffb8"/></svg>';
+const ICON_FLAG = '<svg viewBox="0 0 24 24"><path d="M6 21V3" stroke="#9dffb8" stroke-width="2" stroke-linecap="round"/><path d="M6 3.5h12l-3.5 4.5L18 12.5H6z" fill="#ff3b30"/></svg>';
+const ICON_DIG = '<svg viewBox="0 0 24 24"><g stroke="#33ff66" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L12 12"/><path d="M12.5 3.5l8 8-3.5 3.5-8-8z"/></g></svg>';
+
 let grid, revealed, flags, gameOver, won, minesLeft, timer, seconds, firstClick;
 
 function reset() {
@@ -23,7 +31,8 @@ function reset() {
   timer = null;
   minesEl.textContent = minesLeft;
   timeEl.textContent = "0";
-  statusEl.textContent = "😊";
+  statusEl.innerHTML = FACE_OK;
+  setModeButton();
   overlay.classList.add("hidden");
   render();
 }
@@ -89,14 +98,14 @@ function toggleFlag(r, c) {
 function boom() {
   gameOver = true;
   clearInterval(timer);
-  statusEl.textContent = "😵";
+  statusEl.innerHTML = FACE_DEAD;
   // mostra as minas
   for (let r = 0; r < N; r++)
     for (let c = 0; c < N; c++)
       if (grid[r][c] === -1) revealed[r][c] = true;
   render(true);
   setTimeout(() => {
-    overlayTitle.textContent = "💥 BOOM! — TOQUE PARA REINICIAR";
+    overlayTitle.textContent = "BOOM! — TOQUE PARA REINICIAR";
     overlay.classList.remove("hidden");
   }, 600);
 }
@@ -107,9 +116,9 @@ function checkWin() {
       if (grid[r][c] !== -1 && !revealed[r][c]) return;
   won = true;
   clearInterval(timer);
-  statusEl.textContent = "😎";
+  statusEl.innerHTML = FACE_WIN;
   minesEl.textContent = "0";
-  overlayTitle.textContent = "🏆 VITÓRIA em " + seconds + "s — TOQUE PARA JOGAR DE NOVO";
+  overlayTitle.textContent = "VITÓRIA em " + seconds + "s — TOQUE PARA JOGAR DE NOVO";
   overlay.classList.remove("hidden");
   render();
 }
@@ -125,14 +134,14 @@ function render(dead = false) {
       if (revealed[r][c]) {
         b.classList.add("open");
         if (grid[r][c] === -1) {
-          b.textContent = "💣";
+          b.innerHTML = ICON_BOMB;
           if (dead) b.classList.add("boom");
         } else if (grid[r][c] > 0) {
           b.textContent = grid[r][c];
           b.classList.add("n" + grid[r][c]);
         }
       } else if (flags[r][c]) {
-        b.textContent = "🚩";
+        b.innerHTML = ICON_FLAG;
         b.classList.add("flag");
       }
       boardEl.appendChild(b);
@@ -173,9 +182,13 @@ boardEl.addEventListener("touchend", (e) => {
 });
 boardEl.addEventListener("touchmove", () => clearTimeout(holdTimer), { passive: true });
 
+function setModeButton() {
+  btnMode.innerHTML = flagMode ? ICON_FLAG + " BANDEIRA" : ICON_DIG + " CAVAR";
+}
+
 btnMode.addEventListener("click", () => {
   flagMode = !flagMode;
-  btnMode.textContent = flagMode ? "🚩 BANDEIRA" : "⛏ CAVAR";
+  setModeButton();
   btnMode.classList.toggle("active", flagMode);
 });
 btnNew.addEventListener("click", reset);

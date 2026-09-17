@@ -93,15 +93,15 @@
 <!--SPRITE-END-->
 <div class="wrap">
   <header class="top">
-    <h1>♞ XADREZ</h1>
+    <h1><svg class="minipc big" viewBox="0 0 45 45" style="vertical-align:-9px"><use href="#wn"/></svg> XADREZ</h1>
     <p>Regras oficiais FIDE · 2 jogadores locais ou bot com 5 níveis · relógio 30 min cada · roque, en passant, promoção, xeque-mate, afogamento, 50 lances, tripla repetição, material insuficiente</p>
   </header>
 
   <div class="board-shell">
     <div id="status">Brancas jogam</div>
     <div class="clocks">
-      <div class="clock" id="clockW"><div class="lbl">⚪ Brancas</div><div class="t" id="timeW">30:00</div></div>
-      <div class="clock" id="clockB"><div class="lbl">⚫ Pretas</div><div class="t" id="timeB">30:00</div></div>
+      <div class="clock" id="clockW"><div class="lbl"><svg class="minipc" viewBox="0 0 45 45"><use href="#wp"/></svg> Brancas</div><div class="t" id="timeW">30:00</div></div>
+      <div class="clock" id="clockB"><div class="lbl"><svg class="minipc" viewBox="0 0 45 45"><use href="#bp"/></svg> Pretas</div><div class="t" id="timeB">30:00</div></div>
     </div>
     <div id="board" role="grid" aria-label="Tabuleiro de xadrez"></div>
   </div>
@@ -116,9 +116,9 @@
     <div class="row">
       <label class="cfg">Modo
         <select id="mode">
-          <option value="2p">👥 2 jogadores</option>
-          <option value="bot-w">🤖 Bot — você de brancas</option>
-          <option value="bot-b">🤖 Bot — você de pretas</option>
+          <option value="2p">2 jogadores</option>
+          <option value="bot-w">Bot — você de brancas</option>
+          <option value="bot-b">Bot — você de pretas</option>
         </select>
       </label>
       <label class="cfg">Nível do bot
