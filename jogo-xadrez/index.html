@@ -23,8 +23,9 @@
   .clock.active{border-color:#f7ec59; box-shadow:0 0 12px rgba(247,236,89,.35);}
   .clock.low .t{color:#ff6b6b;}
   .clock.flagged{border-color:#e33;}
-  #board{display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1/1; border:2px solid #3a2f24; border-radius:6px; overflow:hidden; user-select:none; touch-action:manipulation;}
-  .sq{position:relative; display:flex; align-items:center; justify-content:center; font-size:clamp(26px,6vw,52px); cursor:pointer; line-height:1;}
+  #board{display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr); aspect-ratio:1/1; border:2px solid #3a2f24; border-radius:6px; overflow:hidden; user-select:none; touch-action:manipulation;}
+  .sq{position:relative; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0; aspect-ratio:1/1; overflow:hidden; cursor:pointer; line-height:1;}
+  .sq .pc{display:block; line-height:1; pointer-events:none;}
   .sq.light{background:var(--light);} .sq.dark{background:var(--dark);}
   .sq.sel{outline:4px solid var(--sel); outline-offset:-4px;}
   .sq.lastmove{box-shadow:inset 0 0 0 4px rgba(247,236,89,.85);}
@@ -39,6 +40,9 @@
   .row{display:flex; flex-wrap:wrap; gap:8px;}
   button{background:#000; color:#f0d9b5; border:2px solid #b58863; border-radius:8px; padding:8px 12px; font-weight:bold; cursor:pointer; font-size:13px;}
   button:hover{background:#2a2118;}
+  button:disabled{opacity:.45; cursor:default;}
+  select{background:#000; color:#f0d9b5; border:2px solid #b58863; border-radius:8px; padding:7px 8px; font-weight:bold; font-size:13px; max-width:100%;}
+  label.cfg{display:flex; flex-direction:column; gap:4px; font-size:11px; color:#b7a98a; flex:1; min-width:130px;}
   #moves{background:#000; border:2px solid #3a2f24; border-radius:8px; padding:8px 10px; height:220px; overflow-y:auto; font-family:monospace; font-size:13px; line-height:1.7;}
   #moves b{color:#f7ec59;}
   .caps{font-size:22px; min-height:30px; background:#000; border-radius:8px; padding:4px 8px; border:2px solid #3a2f24;}
@@ -55,7 +59,7 @@
 <div class="wrap">
   <header class="top">
     <h1>♞ XADREZ</h1>
-    <p>Regras oficiais FIDE · 2 jogadores locais · relógio 30 min cada · roque, en passant, promoção, xeque-mate, afogamento, 50 lances, tripla repetição, material insuficiente</p>
+    <p>Regras oficiais FIDE · 2 jogadores locais ou bot com 5 níveis · relógio 30 min cada · roque, en passant, promoção, xeque-mate, afogamento, 50 lances, tripla repetição, material insuficiente</p>
   </header>
 
   <div class="board-shell">
@@ -74,6 +78,24 @@
       <button id="btnFlip">⇅ Inverter</button>
       <button id="btnBack">← Jogos</button>
     </div>
+    <div class="row">
+      <label class="cfg">Modo
+        <select id="mode">
+          <option value="2p">👥 2 jogadores</option>
+          <option value="bot-w">🤖 Bot — você de brancas</option>
+          <option value="bot-b">🤖 Bot — você de pretas</option>
+        </select>
+      </label>
+      <label class="cfg">Nível do bot
+        <select id="level">
+          <option value="muito-facil">Muito Fácil</option>
+          <option value="facil">Fácil</option>
+          <option value="medio" selected>Médio</option>
+          <option value="dificil">Difícil</option>
+          <option value="muito-dificil">Muito Difícil</option>
+        </select>
+      </label>
+    </div>
     <div class="caps"><small>Capturadas pelas brancas</small><div id="capW">—</div></div>
     <div class="caps"><small>Capturadas pelas pretas</small><div id="capB">—</div></div>
     <div id="moves" aria-live="polite"></div>
@@ -86,6 +108,7 @@
 <div id="promo"><div class="box"><div><b>Promover peão para:</b></div><div class="opts" id="promoOpts"></div></div></div>
 
 <script src="chess.js"></script>
+<script src="bot.js"></script>
 <script>
 (function(){
   var game = new Chess();
@@ -97,6 +120,40 @@
 
   var UNI = { w:{k:'♔',q:'♕',r:'♖',b:'♗',n:'♘',p:'♙'}, b:{k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'} };
   var REASONS = { checkmate:'XEQUE-MATE', stalemate:'AFOGAMENTO (empate)', fifty:'EMPATE — regra dos 50 lances', threefold:'EMPATE — tripla repetição', material:'EMPATE — material insuficiente' };
+  var LEVEL_NAMES = { 'muito-facil':'Muito Fácil', 'facil':'Fácil', 'medio':'Médio', 'dificil':'Difícil', 'muito-dificil':'Muito Difícil' };
+
+  // Bot: modo e nivel
+  var mode = '2p', botLevel = 'medio', botThinking = false, botToken = 0;
+  var modeEl = document.getElementById('mode'), levelEl = document.getElementById('level');
+  function botColor(){ return mode === 'bot-w' ? 'b' : (mode === 'bot-b' ? 'w' : null); }
+  function humanColor(){ var b = botColor(); return b ? (b === 'w' ? 'b' : 'w') : null; }
+  function maybeTriggerBot(){
+    var bc = botColor();
+    if (!bc || flag || game.status().over) return;
+    if (game.turn !== bc) return;
+    botThinking = true;
+    var tok = ++botToken;
+    render();
+    setTimeout(function(){
+      if (tok !== botToken) return;
+      var mv = null;
+      try {
+        if (typeof Bot !== 'undefined') mv = Bot.choose(game, botLevel);
+        else { // fallback: lance aleatorio se bot.js nao carregar
+          var all = game.allLegalMoves(game.turn);
+          mv = all.length ? { from: all[0].from, to: all[0].to, promo: all[0].promo } : null;
+          if (all.length) { var r = all[Math.floor(Math.random() * all.length)]; mv = { from: r.from, to: r.to, promo: r.promo }; }
+        }
+      } catch (e) { mv = null; }
+      botThinking = false;
+      if (tok !== botToken) return;
+      if (mv && !flag && !game.status().over && game.turn === bc){
+        var done = game.makeMove(mv.from.r, mv.from.c, mv.to.r, mv.to.c, mv.promo || 'q');
+        if (done){ lastMove = done; clockStarted = true; lastTick = Date.now(); }
+      }
+      render();
+    }, 60);
+  }
 
   // Relogio: 30 min regressivos por jogador, conta so de quem tem a vez.
   var CLOCK_MS = 30 * 60 * 1000;
@@ -161,7 +218,7 @@
         var d = document.createElement('div');
         d.className = 'sq ' + (((m.r+m.c)%2===0)?'dark':'light');
         d.dataset.r = m.r; d.dataset.c = m.c;
-        if (p){ var s=document.createElement('span'); s.textContent = UNI[p.c][p.t]; s.className = p.c; d.appendChild(s); }
+        if (p){ var s=document.createElement('span'); s.textContent = UNI[p.c][p.t]; s.className = p.c + ' pc'; d.appendChild(s); }
         if (sel && sel.r===m.r && sel.c===m.c) d.classList.add('sel');
         if (lastMove && ((lastMove.from.r===m.r&&lastMove.from.c===m.c)||(lastMove.to.r===m.r&&lastMove.to.c===m.c))) d.classList.add('lastmove');
         if (kingChk && kingChk.r===m.r && kingChk.c===m.c) d.classList.add('incheck');
@@ -185,7 +242,9 @@
     }
     // status
     statusEl.classList.toggle('check', !!st.inCheck && !st.over && !flag);
-    if (flag){
+    if (botThinking){
+      statusEl.textContent = 'Bot (' + (LEVEL_NAMES[botLevel] || botLevel) + ') pensando…';
+    } else if (flag){
       if (flag.draw) statusEl.textContent = 'TEMPO ESGOTADO — empate (adversário só com o rei)';
       else statusEl.textContent = 'TEMPO ESGOTADO — ' + (flag.winner === 'w' ? 'Brancas' : 'Pretas') + ' vencem!';
     } else if (st.over){
@@ -206,13 +265,29 @@
     var caps = game.captured();
     capW.textContent = caps.byWhite.length ? caps.byWhite.map(function(t){return UNI.b[t];}).join(' ') : '—';
     capB.textContent = caps.byBlack.length ? caps.byBlack.map(function(t){return UNI.w[t];}).join(' ') : '—';
+    levelEl.disabled = (botColor() === null);
     updateClockUI();
+    fitPieces();
   }
+
+  // Pecas com tamanho fixo por casa: mede a casa real e aplica px,
+  // em vez de clamp(vw) que variava por glifo/viewport.
+  function fitPieces(){
+    var sq = boardEl.querySelector('.sq');
+    if (!sq) return;
+    var s = Math.floor(sq.clientWidth * 0.74);
+    if (!s || s < 8) return;
+    var pcs = boardEl.querySelectorAll('.pc');
+    for (var i = 0; i < pcs.length; i++) pcs[i].style.fontSize = s + 'px';
+  }
+  window.addEventListener('resize', fitPieces);
 
   function gameEnded(){ return flag || game.status().over; }
 
   function onTap(e){
-    if (gameEnded()) return;
+    if (gameEnded() || botThinking) return;
+    var bc = botColor();
+    if (bc && game.turn !== humanColor()) return;
     var r = +e.currentTarget.dataset.r, c = +e.currentTarget.dataset.c;
     var p = game.board[r][c];
     if (sel){
@@ -234,6 +309,7 @@
     if (mv){ lastMove = mv; clockStarted = true; lastTick = Date.now(); }
     sel=null; legalCache=[];
     render();
+    maybeTriggerBot();
   }
 
   function askPromo(color, cb){
@@ -247,10 +323,12 @@
     ov.style.display='flex';
   }
 
-  document.getElementById('btnNew').onclick=function(){ game.reset(); sel=null; legalCache=[]; lastMove=null; clock={w:CLOCK_MS,b:CLOCK_MS}; clockStarted=false; flag=null; lastTick=Date.now(); render(); };
-  document.getElementById('btnUndo').onclick=function(){ if (flag) return; game.undo(); sel=null; legalCache=[]; lastMove=null; render(); };
+  document.getElementById('btnNew').onclick=function(){ botToken++; botThinking=false; game.reset(); sel=null; legalCache=[]; lastMove=null; clock={w:CLOCK_MS,b:CLOCK_MS}; clockStarted=false; flag=null; lastTick=Date.now(); render(); maybeTriggerBot(); };
+  document.getElementById('btnUndo').onclick=function(){ if (flag || botThinking) return; var hc = humanColor(); if (hc){ while (game.history.length && game.turn !== hc){ if (!game.undo()) break; } } else { game.undo(); } sel=null; legalCache=[]; lastMove=null; render(); maybeTriggerBot(); };
   document.getElementById('btnFlip').onclick=function(){ flipped=!flipped; render(); };
   document.getElementById('btnBack').onclick=function(){ window.location.href='../index.html'; };
+  modeEl.onchange=function(){ botToken++; botThinking=false; mode=modeEl.value; sel=null; legalCache=[]; render(); maybeTriggerBot(); };
+  levelEl.onchange=function(){ botLevel=levelEl.value; if (botThinking) return; render(); };
   setInterval(tick, 200);
   render();
 })();
