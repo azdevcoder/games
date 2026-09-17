@@ -7,7 +7,7 @@ const overlayTitle = document.getElementById("overlay-title");
 const btnMode = document.getElementById("btn-mode");
 const btnNew = document.getElementById("btn-new");
 
-const N = 9;
+let N = 9;
 let MINES = 10;
 
 // Ícones SVG próprios (estilo arcade verde do jogo)
@@ -77,11 +77,17 @@ function startTimer() {
 function reveal(r, c) {
   if (gameOver || won || flags[r][c] || revealed[r][c]) return;
   if (firstClick) { plantMines(r, c); firstClick = false; startTimer(); }
-  revealed[r][c] = true;
-  if (grid[r][c] === -1) return boom();
-  if (grid[r][c] === 0) {
-    for (const [nr, nc] of neighbors(r, c))
-      if (!revealed[nr][nc] && !flags[nr][nc]) reveal(nr, nc);
+  // abertura em largura iterativa (recursão estouraria a pilha em campo grande)
+  const stack = [[r, c]];
+  while (stack.length) {
+    const [cr, cc] = stack.pop();
+    if (revealed[cr][cc] || flags[cr][cc]) continue;
+    revealed[cr][cc] = true;
+    if (grid[cr][cc] === -1) return boom();
+    if (grid[cr][cc] === 0) {
+      for (const [nr, nc] of neighbors(cr, cc))
+        if (!revealed[nr][nc] && !flags[nr][nc]) stack.push([nr, nc]);
+    }
   }
   checkWin();
   render();
@@ -125,6 +131,9 @@ function checkWin() {
 }
 
 function render(dead = false) {
+  boardEl.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  boardEl.classList.toggle("mid", N >= 12 && N < 16);
+  boardEl.classList.toggle("big", N >= 16);
   boardEl.innerHTML = "";
   for (let r = 0; r < N; r++)
     for (let c = 0; c < N; c++) {
@@ -196,10 +205,18 @@ btnNew.addEventListener("click", reset);
 overlay.addEventListener("click", reset);
 
 // seletor de dificuldade (nº de bombas)
-const diffBtns = document.querySelectorAll(".diff");
+const diffBtns = document.querySelectorAll(".diff.bomb");
 diffBtns.forEach((b) => b.addEventListener("click", () => {
   MINES = +b.dataset.mines;
   diffBtns.forEach((x) => x.classList.toggle("active", x === b));
+  reset();
+}));
+
+// seletor de tamanho do campo
+const sizeBtns = document.querySelectorAll(".diff.size");
+sizeBtns.forEach((b) => b.addEventListener("click", () => {
+  N = +b.dataset.size;
+  sizeBtns.forEach((x) => x.classList.toggle("active", x === b));
   reset();
 }));
 

@@ -135,6 +135,9 @@ body {
   user-select: none;
 }
 .cell.open { background: #000; cursor: default; }
+.board.mid .cell { font-size: 13px; }
+.board.big { gap: 2px; padding: 4px; }
+.board.big .cell { font-size: 11px; border-radius: 2px; }
 .cell.flag { color: #ffee33; }
 .cell.boom { background: #550000; }
 .cell.n1 { color: #33ccff; } .cell.n2 { color: #33ff66; }

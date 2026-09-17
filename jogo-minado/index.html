@@ -24,10 +24,18 @@
       <button id="btn-mode" class="mode" aria-label="alternar modo"></button>
       <button id="btn-new" class="mode" aria-label="novo jogo">↻ NOVO</button>
     </div>
+    <div class="diffbar" role="group" aria-label="tamanho do campo">
+      <button class="diff size active" data-size="9">9×9</button>
+      <button class="diff size" data-size="12">12×12</button>
+      <button class="diff size" data-size="16">16×16</button>
+      <button class="diff size" data-size="20">20×20</button>
+    </div>
     <div class="diffbar" role="group" aria-label="quantidade de bombas">
-      <button class="diff" data-mines="5">💣 5</button>
-      <button class="diff active" data-mines="10">💣 10</button>
-      <button class="diff" data-mines="12">💣 12</button>
+      <button class="diff bomb" data-mines="5">💣 5</button>
+      <button class="diff bomb active" data-mines="10">💣 10</button>
+      <button class="diff bomb" data-mines="12">💣 12</button>
+      <button class="diff bomb" data-mines="15">💣 15</button>
+      <button class="diff bomb" data-mines="20">💣 20</button>
     </div>
     <div id="board" class="board"></div>
     <div id="overlay" class="overlay hidden">
