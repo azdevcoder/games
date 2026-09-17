@@ -154,6 +154,8 @@ function toggleFullscreen() {
 function cycleSpeed() {
   speedIndex = (speedIndex + 1) % SPEEDS.length;
   speedEl.textContent = SPEEDS[speedIndex].label;
+  const btnSpeed = document.getElementById("btn-speed");
+  if (btnSpeed) btnSpeed.textContent = SPEEDS[speedIndex].label;
   if (alive && started && !paused) restartLoop();
 }
 
@@ -161,11 +163,27 @@ function togglePause() {
   if (!started || !alive) return;
   paused = !paused;
   if (paused) {
-    overlayTitle.textContent = "PAUSADO — ENTER / ESPAÇO CONTINUA";
+    overlayTitle.textContent = "PAUSADO — TOQUE ▶ / ENTER PARA CONTINUAR";
     overlay.classList.remove("hidden");
   } else {
     overlay.classList.add("hidden");
   }
+  const btnPause = document.getElementById("btn-pause");
+  if (btnPause) btnPause.textContent = paused ? "▶" : "⏸";
+}
+
+function setDir(x, y) {
+  // impede ré 180°
+  if (x === -dir.x && y === -dir.y && (dir.x !== 0 || dir.y !== 0)) {
+    // permite se for a partir do estado inicial? mantém regra simples:
+    if (snake.length > 1) return;
+  }
+  if (paused || !alive) return;
+  if (!started) { reset(); }
+  if (x === 0 && y === -1 && dir.y !== 1) nextDir = { x, y };
+  else if (x === 0 && y === 1 && dir.y !== -1) nextDir = { x, y };
+  else if (x === -1 && y === 0 && dir.x !== 1) nextDir = { x, y };
+  else if (x === 1 && y === 0 && dir.x !== -1) nextDir = { x, y };
 }
 
 document.addEventListener("keydown", (e) => {
@@ -207,3 +225,74 @@ nextDir = { x: 1, y: 0 };
 food = { x: 14, y: 10 };
 score = 0;
 draw();
+
+// ---- input touch / mobile ----
+// swipe no tabuleiro
+(function initSwipe() {
+  const zone = document.getElementById("touch-zone") || canvas;
+  let sx = 0, sy = 0, tracking = false;
+  zone.addEventListener("touchstart", (e) => {
+    const t = e.changedTouches[0];
+    sx = t.clientX; sy = t.clientY; tracking = true;
+  }, { passive: true });
+  zone.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    if (!tracking) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
+    else setDir(0, dy > 0 ? 1 : -1);
+    sx = t.clientX; sy = t.clientY;
+  }, { passive: false });
+  zone.addEventListener("touchend", () => { tracking = false; }, { passive: true });
+})();
+
+// d-pad + botões
+document.querySelectorAll(".dpad .tbtn").forEach((btn) => {
+  const press = (e) => {
+    e.preventDefault();
+    const d = btn.dataset.dir;
+    if (d === "up") setDir(0, -1);
+    else if (d === "down") setDir(0, 1);
+    else if (d === "left") setDir(-1, 0);
+    else if (d === "right") setDir(1, 0);
+  };
+  btn.addEventListener("touchstart", press, { passive: false });
+  btn.addEventListener("click", press);
+});
+
+(function initTouchButtons() {
+  const bp = document.getElementById("btn-pause");
+  const br = document.getElementById("btn-restart");
+  const bs = document.getElementById("btn-speed");
+  if (bp) {
+    const h = (e) => { e.preventDefault(); if (!started) reset(); else togglePause(); };
+    bp.addEventListener("touchstart", h, { passive: false });
+    bp.addEventListener("click", h);
+  }
+  if (br) {
+    const h = (e) => { e.preventDefault(); reset(); };
+    br.addEventListener("touchstart", h, { passive: false });
+    br.addEventListener("click", h);
+  }
+  if (bs) {
+    const h = (e) => { e.preventDefault(); cycleSpeed(); };
+    bs.addEventListener("touchstart", h, { passive: false });
+    bs.addEventListener("click", h);
+  }
+  // toque no overlay inicia / continua / reinicia
+  overlay.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    if (!started || !alive) reset();
+    else if (paused) togglePause();
+  }, { passive: false });
+  overlay.addEventListener("click", () => {
+    if (!started || !alive) reset();
+    else if (paused) togglePause();
+  });
+})();
+
+// evita scroll/zoom por gesto duplo no iOS
+document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: false });
+document.addEventListener("gesturestart", (e) => e.preventDefault());

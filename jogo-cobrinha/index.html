@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>SNAKE RETRO</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -17,11 +21,25 @@
       </div>
     </header>
 
-    <div class="screen-wrap">
+    <div class="screen-wrap" id="touch-zone">
       <canvas id="game" width="400" height="400"></canvas>
       <div id="overlay" class="overlay">
-        <p id="overlay-title">APERTE → PARA COMEÇAR</p>
-        <p class="hint">SETAS movem · R reinicia · V velocidade · T tela cheia · ENTER/ESPAÇO pausa</p>
+        <p id="overlay-title">TOQUE OU → PARA COMEÇAR</p>
+        <p class="hint">SETAS / swipe movem · R reinicia · V velocidade · T tela cheia · ENTER/ESPAÇO pausa</p>
+      </div>
+    </div>
+
+    <div class="touch-ui">
+      <div class="dpad">
+        <button class="tbtn up" data-dir="up" aria-label="cima">▲</button>
+        <button class="tbtn left" data-dir="left" aria-label="esquerda">◀</button>
+        <button class="tbtn right" data-dir="right" aria-label="direita">▶</button>
+        <button class="tbtn down" data-dir="down" aria-label="baixo">▼</button>
+      </div>
+      <div class="actions">
+        <button class="tbtn small" id="btn-pause" aria-label="pausa">⏸</button>
+        <button class="tbtn small" id="btn-restart" aria-label="reinicia">↻</button>
+        <button class="tbtn small" id="btn-speed" aria-label="velocidade">1x</button>
       </div>
     </div>
 
