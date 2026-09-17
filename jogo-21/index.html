@@ -115,7 +115,6 @@
     setButtons(true, true, chips >= bet && pHand.length === 2, false);
   }
   function finish(natural){
-    phase = 'done';
     var pv = val(pHand), dv = val(dHand);
     while (val(dHand) < 17) dHand.push(deck.pop());
     dv = val(dHand);
@@ -130,8 +129,9 @@
     else { chips += bet; msg = 'Empate — aposta devolvida'; }
     bet = 0; render(false);
     if (chips <= 0){ msg += ' · SEM FICHAS — recomeçando com 100'; chips = 100; }
-    statusEl.textContent = msg;
-    setButtons(false, false, false, true);
+    phase = 'bet';
+    statusEl.textContent = msg + ' · Faça sua aposta para a próxima mão';
+    setButtons(false, false, false, false);
   }
   document.getElementById('bHit').onclick = function(){
     pHand.push(deck.pop()); render(true);
