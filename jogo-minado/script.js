@@ -9,7 +9,7 @@ const btnNew = document.getElementById("btn-new");
 
 const N = 9, MINES = 10;
 
-let grid, revealed, flags, gameOver, won, minesLeft, timer, seconds, flagMode, firstClick;
+let grid, revealed, flags, gameOver, won, minesLeft, timer, seconds, firstClick;
 
 function reset() {
   grid = Array.from({ length: N }, () => Array(N).fill(0));
