@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Xadrez — Regras Originais</title>
+<style>
+  :root { --light:#f0d9b5; --dark:#b58863; --sel:#f7ec59; --move:rgba(20,120,60,.55); --cap:rgba(200,30,30,.65); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#0a0a0a; color:#e8e0d0; font-family:Georgia,'Times New Roman',serif; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:16px; }
+  .wrap { width:min(96vw,1060px); display:grid; grid-template-columns:minmax(280px,640px) minmax(240px,360px); gap:16px; }
+  @media (max-width:860px){ .wrap{grid-template-columns:1fr;} }
+  header.top { grid-column:1/-1; text-align:center; padding:8px 0 2px; }
+  header.top h1{letter-spacing:3px; font-size:clamp(20px,4vw,30px);}
+  header.top p{color:#b7a98a; font-size:13px; margin-top:4px;}
+  .board-shell{background:#161310; border:3px solid #3a2f24; border-radius:10px; padding:12px; box-shadow:0 0 30px rgba(181,136,99,.15);}
+  #status{min-height:44px; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:bold; background:#000; border:2px solid #b58863; border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:15px;}
+  #status.check{border-color:#e33; color:#ffb3b3;}
+  #board{display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1/1; border:2px solid #3a2f24; border-radius:6px; overflow:hidden; user-select:none; touch-action:manipulation;}
+  .sq{position:relative; display:flex; align-items:center; justify-content:center; font-size:clamp(26px,6vw,52px); cursor:pointer; line-height:1;}
+  .sq.light{background:var(--light);} .sq.dark{background:var(--dark);}
+  .sq.sel{outline:4px solid var(--sel); outline-offset:-4px;}
+  .sq.lastmove{box-shadow:inset 0 0 0 4px rgba(247,236,89,.85);}
+  .sq.incheck{box-shadow:inset 0 0 0 5px #e33;}
+  .sq .dot{position:absolute; width:26%; height:26%; border-radius:50%; background:var(--move); pointer-events:none;}
+  .sq .ring{position:absolute; inset:6%; border-radius:50%; border:5px solid var(--cap); pointer-events:none;}
+  .sq.w{color:#fff; text-shadow:0 1px 2px #000,0 0 2px #000;} .sq.b{color:#111; text-shadow:0 1px 1px #fff8;}
+  .coord{position:absolute; font-size:10px; font-family:monospace; opacity:.8; pointer-events:none;}
+  .coord.rank{top:2px; left:3px;} .coord.file{bottom:2px; right:4px;}
+  .light .coord{color:#7a5c3e;} .dark .coord{color:#f0d9b5;}
+  .panel{background:#161310; border:3px solid #3a2f24; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px; min-height:200px;}
+  .row{display:flex; flex-wrap:wrap; gap:8px;}
+  button{background:#000; color:#f0d9b5; border:2px solid #b58863; border-radius:8px; padding:8px 12px; font-weight:bold; cursor:pointer; font-size:13px;}
+  button:hover{background:#2a2118;}
+  #moves{background:#000; border:2px solid #3a2f24; border-radius:8px; padding:8px 10px; height:220px; overflow-y:auto; font-family:monospace; font-size:13px; line-height:1.7;}
+  #moves b{color:#f7ec59;}
+  .caps{font-size:22px; min-height:30px; background:#000; border-radius:8px; padding:4px 8px; border:2px solid #3a2f24;}
+  .caps small{display:block; font-size:11px; color:#b7a98a; font-family:monospace;}
+  footer.end{grid-column:1/-1; text-align:center; color:#b7a98a; font-size:12px;}
+  footer.end a{color:#f0d9b5;}
+  #promo{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.7); z-index:10;}
+  #promo .box{background:#161310; border:3px solid #b58863; border-radius:12px; padding:16px; text-align:center;}
+  #promo .opts{display:flex; gap:10px; margin-top:12px;}
+  #promo .opts button{font-size:34px; padding:6px 14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>♞ XADREZ</h1>
+    <p>Regras oficiais FIDE · 2 jogadores locais · roque, en passant, promoção, xeque-mate, afogamento, 50 lances, tripla repetição, material insuficiente</p>
+  </header>
+
+  <div class="board-shell">
+    <div id="status">Brancas jogam</div>
+    <div id="board" role="grid" aria-label="Tabuleiro de xadrez"></div>
+  </div>
+
+  <aside class="panel">
+    <div class="row">
+      <button id="btnNew">↺ Novo jogo</button>
+      <button id="btnUndo">⤺ Desfazer</button>
+      <button id="btnFlip">⇅ Inverter</button>
+      <button id="btnBack">← Jogos</button>
+    </div>
+    <div class="caps"><small>Capturadas pelas brancas</small><div id="capW">—</div></div>
+    <div class="caps"><small>Capturadas pelas pretas</small><div id="capB">—</div></div>
+    <div id="moves" aria-live="polite"></div>
+    <div style="font-size:12px;color:#b7a98a">Toque/clique: seleciona → destino. Lances legais com <b>●</b>; capturas com anel. Promoção abre escolha Dama/Torre/Bispo/Cavalo.</div>
+  </aside>
+
+  <footer class="end"><a href="../index.html">← voltar à seleção de jogos</a> · xeque-mate = vitória · afogamento/50 lances/tripla/material = empate</footer>
+</div>
+
+<div id="promo"><div class="box"><div><b>Promover peão para:</b></div><div class="opts" id="promoOpts"></div></div></div>
+
+<script src="chess.js"></script>
+<script>
+(function(){
+  var game = new Chess();
+  var boardEl = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var movesEl = document.getElementById('moves');
+  var capW = document.getElementById('capW'), capB = document.getElementById('capB');
+  var sel = null, legalCache = [], flipped = false, lastMove = null;
+
+  var UNI = { w:{k:'♔',q:'♕',r:'♖',b:'♗',n:'♘',p:'♙'}, b:{k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'} };
+  var REASONS = { checkmate:'XEQUE-MATE', stalemate:'AFOGAMENTO (empate)', fifty:'EMPATE — regra dos 50 lances', threefold:'EMPATE — tripla repetição', material:'EMPATE — material insuficiente' };
+
+  function view(r,c){ return flipped ? {r:7-r, c:7-c} : {r:r,c:c}; }
+  function model(vr,vc){ return flipped ? {r:7-vr, c:7-vc} : {r:vr,c:vc}; }
+
+  function render(){
+    boardEl.innerHTML = '';
+    var st = game.status();
+    var kingChk = null;
+    if (game.isInCheck(game.turn)) kingChk = game.kingPos(game.turn);
+    for (var vr=0; vr<8; vr++) for (var vc=0; vc<8; vc++){
+      (function(vr,vc){
+        var m = model(vr,vc);
+        var p = game.board[m.r][m.c];
+        var d = document.createElement('div');
+        d.className = 'sq ' + (((m.r+m.c)%2===0)?'dark':'light');
+        d.dataset.r = m.r; d.dataset.c = m.c;
+        if (p){ var s=document.createElement('span'); s.textContent = UNI[p.c][p.t]; s.className = p.c; d.appendChild(s); }
+        if (sel && sel.r===m.r && sel.c===m.c) d.classList.add('sel');
+        if (lastMove && ((lastMove.from.r===m.r&&lastMove.from.c===m.c)||(lastMove.to.r===m.r&&lastMove.to.c===m.c))) d.classList.add('lastmove');
+        if (kingChk && kingChk.r===m.r && kingChk.c===m.c) d.classList.add('incheck');
+        for (var i=0;i<legalCache.length;i++){
+          if (legalCache[i].to.r===m.r && legalCache[i].to.c===m.c){
+            var mark=document.createElement('div');
+            var isCap = !!game.board[m.r][m.c] || !!legalCache[i].ep;
+            mark.className = isCap ? 'ring' : 'dot';
+            d.appendChild(mark);
+          }
+        }
+        if (vc===0 || vr===7){
+          var cd=document.createElement('span');
+          if (vc===0){ cd.className='coord rank'; cd.textContent=String(8-m.r); }
+          else { cd.className='coord file'; cd.textContent='abcdefgh'.charAt(m.c); }
+          d.appendChild(cd);
+        }
+        d.addEventListener('click', onTap);
+        boardEl.appendChild(d);
+      })(vr,vc);
+    }
+    // status
+    statusEl.classList.toggle('check', !!st.inCheck && !st.over);
+    if (st.over){
+      if (st.reason==='checkmate') statusEl.textContent = 'XEQUE-MATE — ' + (st.winner==='w'?'Brancas':'Pretas') + ' vencem!';
+      else statusEl.textContent = REASONS[st.reason] || 'Fim de jogo';
+    } else if (st.reason==='check'){
+      statusEl.textContent = (game.turn==='w'?'Brancas':'Pretas') + ' em XEQUE — jogam ' + (game.turn==='w'?'brancas':'pretas');
+    } else {
+      statusEl.textContent = (game.turn==='w'?'Brancas':'Pretas') + ' jogam';
+    }
+    // lances
+    var sans = game.movesSAN(), html='';
+    for (var i=0;i<sans.length;i+=2){
+      html += '<b>'+((i/2)+1)+'.</b> '+sans[i]+(sans[i+1]?' '+sans[i+1]:'')+'<br>';
+    }
+    movesEl.innerHTML = html || '<span style="color:#888">Nenhum lance ainda.</span>';
+    movesEl.scrollTop = movesEl.scrollHeight;
+    var caps = game.captured();
+    capW.textContent = caps.byWhite.length ? caps.byWhite.map(function(t){return UNI.b[t];}).join(' ') : '—';
+    capB.textContent = caps.byBlack.length ? caps.byBlack.map(function(t){return UNI.w[t];}).join(' ') : '—';
+  }
+
+  function onTap(e){
+    var st = game.status();
+    if (st.over) return;
+    var r = +e.currentTarget.dataset.r, c = +e.currentTarget.dataset.c;
+    var p = game.board[r][c];
+    if (sel){
+      for (var i=0;i<legalCache.length;i++){
+        if (legalCache[i].to.r===r && legalCache[i].to.c===c){
+          var mv = legalCache[i];
+          if (mv.promo && !mv._chosen){ askPromo(game.turn, function(choice){ doMove(sel.r,sel.c,r,c,choice||'q'); }); return; }
+          doMove(sel.r,sel.c,r,c,mv.promo); return;
+        }
+      }
+    }
+    if (p && p.c===game.turn){ sel={r:r,c:c}; legalCache=game.legalMoves(r,c); }
+    else { sel=null; legalCache=[]; }
+    render();
+  }
+
+  function doMove(fr,fc,tr,tc,promo){
+    var mv = game.makeMove(fr,fc,tr,tc,promo);
+    if (mv){ lastMove = mv; }
+    sel=null; legalCache=[];
+    render();
+  }
+
+  function askPromo(color, cb){
+    var ov=document.getElementById('promo'), opts=document.getElementById('promoOpts');
+    opts.innerHTML='';
+    ['q','r','b','n'].forEach(function(t){
+      var b=document.createElement('button'); b.textContent=UNI[color][t];
+      b.onclick=function(){ ov.style.display='none'; cb(t); };
+      opts.appendChild(b);
+    });
+    ov.style.display='flex';
+  }
+
+  document.getElementById('btnNew').onclick=function(){ game.reset(); sel=null; legalCache=[]; lastMove=null; render(); };
+  document.getElementById('btnUndo').onclick=function(){ game.undo(); sel=null; legalCache=[]; lastMove=null; render(); };
+  document.getElementById('btnFlip').onclick=function(){ flipped=!flipped; render(); };
+  document.getElementById('btnBack').onclick=function(){ window.location.href='../index.html'; };
+  render();
+})();
+</script>
+</body>
+</html>
