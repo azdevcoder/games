@@ -23,6 +23,17 @@ let alive = true;
 let started = false;
 let paused = false;
 
+// ---- obstáculos (ativos a partir de 100 pts) ----
+const OBSTACLE_SCORE = 100;
+const OBSTACLE_COUNT = 3;
+const HIDE_TICKS = 22;   // invisível (~3s no 1x)
+const WARN_TICKS = 7;    // piscando = vai materializar (~1s)
+const SOLID_TICKS = 26;  // sólido = mata (~4s)
+let obstacles = [];
+let obstaclesOn = false;
+let tickCount = 0;
+let bannerTicks = 0;
+
 try {
   hiscore = parseInt(localStorage.getItem("snake-hi") || "0", 10) || 0;
 } catch (e) { /* sem storage = ignora */ }
@@ -38,6 +49,10 @@ function reset() {
   paused = false;
   scoreEl.textContent = "0";
   overlay.classList.add("hidden");
+  obstacles = [];
+  obstaclesOn = false;
+  tickCount = 0;
+  bannerTicks = 0;
   placeFood();
   restartLoop();
 }
@@ -49,8 +64,10 @@ function placeFood() {
       y: Math.floor(Math.random() * GRID),
     };
     if (!snake.some((s) => s.x === p.x && s.y === p.y)) {
-      food = p;
-      return;
+      if (!obstacles.some((o) => o.x === p.x && o.y === p.y)) {
+        food = p;
+        return;
+      }
     }
   }
 }
@@ -69,6 +86,8 @@ function atravessarParede(pos) {
 function step() {
   if (!alive || paused) return;
   dir = nextDir;
+  tickCount++;
+  if (bannerTicks > 0) bannerTicks--;
 
   // atravessa a parede em vez de morrer
   const head = {
@@ -84,6 +103,12 @@ function step() {
     return die();
   }
 
+  // colisão com obstáculo sólido
+  if (obstacles.some((o) => o.state === "solid" && o.x === head.x && o.y === head.y)) {
+    snake.unshift(head);
+    return die("obstaculo");
+  }
+
   snake.unshift(head);
 
   // comeu
@@ -95,17 +120,67 @@ function step() {
       hiscoreEl.textContent = hiscore;
       try { localStorage.setItem("snake-hi", String(hiscore)); } catch (e) {}
     }
+    if (!obstaclesOn && score >= OBSTACLE_SCORE) activateObstacles();
     placeFood();
   } else {
     snake.pop();
   }
+  if (obstaclesOn) updateObstacles();
   draw();
 }
 
-function die() {
+// ---- obstáculos: escondido -> piscando (aviso) -> sólido (mata) ----
+function freeCell() {
+  for (let tries = 0; tries < 200; tries++) {
+    const p = {
+      x: Math.floor(Math.random() * GRID),
+      y: Math.floor(Math.random() * GRID),
+    };
+    if (snake.some((s) => s.x === p.x && s.y === p.y)) continue;
+    if (food && food.x === p.x && food.y === p.y) continue;
+    if (obstacles.some((o) => o.x === p.x && o.y === p.y)) continue;
+    return p;
+  }
+  return null;
+}
+
+function activateObstacles() {
+  obstaclesOn = true;
+  bannerTicks = 16; // aviso "OBSTÁCULOS!" por ~2s
+  for (let i = 0; i < OBSTACLE_COUNT; i++) {
+    const p = freeCell();
+    if (!p) break;
+    // dessincroniza: cada um começa com tempo escondido diferente
+    obstacles.push({ x: p.x, y: p.y, state: "hidden", t: HIDE_TICKS + i * 9 });
+  }
+}
+
+function updateObstacles() {
+  for (const o of obstacles) {
+    o.t--;
+    if (o.t > 0) continue;
+    if (o.state === "hidden") {
+      o.state = "warn";
+      o.t = WARN_TICKS;
+    } else if (o.state === "warn") {
+      o.state = "solid";
+      o.t = SOLID_TICKS;
+    } else {
+      // sólido expira: muda de lugar e some de novo
+      const p = freeCell();
+      if (p) { o.x = p.x; o.y = p.y; }
+      o.state = "hidden";
+      o.t = HIDE_TICKS;
+    }
+  }
+}
+
+function die(reason) {
   alive = false;
   clearInterval(timer);
-  overlayTitle.textContent = "GAME OVER · " + score + " PTS — R REINICIA";
+  overlayTitle.textContent = reason === "obstaculo"
+    ? "BATEU NO OBSTÁCULO · " + score + " PTS — R REINICIA"
+    : "GAME OVER · " + score + " PTS — R REINICIA";
   overlay.classList.remove("hidden");
   draw();
 }
@@ -129,6 +204,41 @@ function draw() {
   ctx.shadowBlur = 10;
   ctx.fillRect(food.x * CELL + 3, food.y * CELL + 3, CELL - 6, CELL - 6);
   ctx.shadowBlur = 0;
+
+  // obstáculos
+  for (const o of obstacles) {
+    const px = o.x * CELL, py = o.y * CELL;
+    if (o.state === "solid") {
+      ctx.fillStyle = "#ff33cc";
+      ctx.shadowColor = "#ff33cc";
+      ctx.shadowBlur = 12;
+      ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#550033";
+      ctx.fillRect(px + 6, py + 6, 4, 4);
+      ctx.fillRect(px + CELL - 10, py + 6, 4, 4);
+      ctx.fillRect(px + 6, py + CELL - 10, 4, 4);
+      ctx.fillRect(px + CELL - 10, py + CELL - 10, 4, 4);
+    } else if (o.state === "warn" && tickCount % 2 === 0) {
+      // piscando = vai materializar, saia daí!
+      ctx.strokeStyle = "#ff33cc";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 2, py + 2, CELL - 4, CELL - 4);
+    }
+  }
+
+  // aviso de fase nova
+  if (bannerTicks > 0 && alive) {
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(0, canvas.height / 2 - 26, canvas.width, 52);
+    ctx.fillStyle = "#ff33cc";
+    ctx.font = "bold 20px 'Courier New', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("⚠ OBSTÁCULOS! ⚠", canvas.width / 2, canvas.height / 2 - 2);
+    ctx.fillStyle = "#9dffb8";
+    ctx.font = "bold 13px 'Courier New', monospace";
+    ctx.fillText("DESVIE DOS BLOCOS ROSA", canvas.width / 2, canvas.height / 2 + 18);
+  }
 
   // cobra
   snake.forEach((s, i) => {
@@ -227,6 +337,10 @@ dir = { x: 1, y: 0 };
 nextDir = { x: 1, y: 0 };
 food = { x: 14, y: 10 };
 score = 0;
+obstacles = [];
+obstaclesOn = false;
+tickCount = 0;
+bannerTicks = 0;
 draw();
 
 // ---- input touch / mobile ----
