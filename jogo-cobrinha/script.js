@@ -193,6 +193,9 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
   }
 
+  // voltar: ESC retorna à seleção de jogos
+  if (k === "Escape") { window.location.href = "../index.html"; return; }
+
   // pausa: Enter ou Espaço
   if (k === " " || k === "Enter") {
     if (!started) { reset(); return; }

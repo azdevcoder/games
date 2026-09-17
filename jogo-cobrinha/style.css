@@ -28,6 +28,21 @@ body {
 
 .hud { text-align: center; }
 
+.back {
+  display: inline-block;
+  color: #33ff66;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  border: 2px solid #33ff66;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: #000;
+}
+.back:hover { background: #062b12; }
+
 .title {
   font-size: 24px;
   font-weight: bold;
@@ -144,6 +159,13 @@ canvas {
 
 .actions { display: flex; flex-direction: column; gap: 8px; }
 .tbtn.small { width: 64px; height: 48px; font-size: 16px; font-weight: bold; }
+a.tbtn.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 22px;
+}
 
 /* mostra touch-ui em telas pequenas ou dispositivos touch */
 @media (max-width: 600px), (pointer: coarse) {
