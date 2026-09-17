@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Truco Paulista</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d3311; color: #f0d9b5; font-family: Georgia, serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .cabinet { background: #123d16; border: 4px solid #c9a227; border-radius: 12px; padding: 16px; width: min(96vw, 620px); text-align: center; }
+  .back { display: inline-block; color: #f0d9b5; text-decoration: none; font-size: 13px; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; border: 2px solid #c9a227; padding: 4px 12px; border-radius: 6px; background: #00000055; }
+  h1 { letter-spacing: 3px; color: #ffe27a; }
+  .placar { display: flex; gap: 8px; justify-content: center; margin: 8px 0; font-size: 14px; }
+  .placar div { background: #00000055; border: 2px solid #c9a227; border-radius: 8px; padding: 6px 18px; }
+  .placar b { font-size: 22px; color: #ffe27a; }
+  #info { font-size: 13px; color: #ffe9a8; min-height: 1.6em; }
+  #status { min-height: 1.8em; font-weight: bold; font-size: 16px; margin: 6px 0; color: #fff; }
+  .mesa { background: #0a5c2e; border: 3px solid #c9a227; border-radius: 60px; padding: 14px; margin: 8px 0; min-height: 150px; display: flex; gap: 14px; align-items: center; justify-content: center; }
+  .slot { width: 74px; min-height: 104px; border: 2px dashed #ffffff44; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #ffffff88; }
+  .slot small { display: block; font-size: 10px; }
+  .card { width: 70px; height: 100px; background: #fff; border-radius: 8px; color: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; box-shadow: 2px 2px 6px #0008; }
+  .card .r { font-size: 24px; } .card .s { font-size: 24px; }
+  .card.red { color: #c02020; } .card.manilha { outline: 3px solid #c9a227; }
+  .card.back { background: repeating-linear-gradient(45deg, #123d16, #123d16 6px, #1d5c22 6px, #1d5c22 12px); }
+  .card.playable { cursor: pointer; }
+  .card.playable:hover { transform: translateY(-6px); outline: 3px solid #ffe27a; }
+  .hand { display: flex; gap: 10px; justify-content: center; margin: 8px 0; min-height: 104px; }
+  .foe-hand { display: flex; gap: 10px; justify-content: center; }
+  .foe-hand .card { width: 52px; height: 74px; }
+  .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+  button { background: #00000066; color: #ffe27a; border: 2px solid #c9a227; border-radius: 8px; padding: 10px 16px; font-weight: bold; cursor: pointer; font-size: 14px; font-family: inherit; }
+  button:hover:not(:disabled) { background: #c9a227; color: #111; }
+  button:disabled { opacity: .35; cursor: default; }
+  button.danger { border-color: #e33; color: #ffb3b3; }
+  .hint { font-size: 11px; color: #b7d9a8; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main class="cabinet">
+  <a class="back" href="../index.html">‹ JOGOS</a>
+  <h1>TRUCO PAULISTA</h1>
+  <div class="placar"><div>VOCÊ<br><b id="sP">0</b></div><div>VALE<br><b id="sV">1</b></div><div>BOT<br><b id="sB">0</b></div></div>
+  <div id="info"></div>
+  <div class="foe-hand" id="foeHand"></div>
+  <div class="mesa">
+    <div class="slot" id="slotP"><small>VOCÊ</small></div>
+    <div style="font-size:12px;color:#ffe9a8" id="viraLbl"></div>
+    <div class="slot" id="slotB"><small>BOT</small></div>
+  </div>
+  <div id="status">Embaralhando…</div>
+  <div class="hand" id="myHand"></div>
+  <div class="row">
+    <button id="bTruco">TRUCAR</button>
+    <button id="bAccept" disabled>ACEITAR</button>
+    <button id="bRun" class="danger" disabled>CORRER</button>
+  </div>
+  <div class="row"><button id="bNew">↻ NOVA PARTIDA</button><button id="bNext" disabled>PRÓXIMA MÃO</button></div>
+  <div class="hint">Clique numa carta para jogar · mão de 11 vale 3 · ESC volta</div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var CYCLE = ['4','5','6','7','Q','J','K','A','2','3'];
+  var BASE = { '4':1,'5':2,'6':3,'7':4,'Q':5,'J':6,'K':7,'A':8,'2':9,'3':10 };
+  var SUITS = [{n:'ouros',s:'♦',red:true,p:1},{n:'espadas',s:'♠',red:false,p:2},{n:'copas',s:'♥',red:true,p:3},{n:'paus',s:'♣',red:false,p:4}];
+  var LV = { facil: { ask: 6, call: 5, bluff: 0, miss: 0.35 }, medio: { ask: 4, call: 3, bluff: 0.1, miss: 0.1 }, dificil: { ask: 3, call: 2, bluff: 0.22, miss: 0 } };
+  var level = 'medio';
+  var sP = 0, sB = 0, hand, busy, mano = 'p';
+
+  function lvlSel(){ var ex = document.getElementById('lvlSel'); if (!ex){ var r = document.querySelectorAll('.cabinet .row')[1]; var s = document.createElement('select'); s.id = 'lvlSel'; s.style.cssText = 'background:#000;color:#ffe27a;border:2px solid #c9a227;border-radius:8px;padding:9px;font-weight:bold'; s.innerHTML = '<option value="facil">Bot: Fácil</option><option value="medio" selected>Bot: Médio</option><option value="dificil">Bot: Difícil</option>'; s.onchange = function(){ level = s.value; }; r.appendChild(s); } }
+
+  function newMatch(){ sP = 0; sB = 0; mano = 'p'; newHand(mano); }
+  function deck(){
+    var d = [];
+    for (var s = 0; s < 4; s++) for (var r = 0; r < 10; r++) d.push({ r: CYCLE[r], suit: SUITS[s] });
+    for (var i = d.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = d[i]; d[i] = d[j]; d[j] = t; }
+    return d;
+  }
+  function newHand(first){
+    var d = deck();
+    hand = {
+      p: [d.pop(), d.pop(), d.pop()], b: [d.pop(), d.pop(), d.pop()],
+      vira: d.pop(), res: [], tp: null, tb: null, turn: first,
+      stake: 1, pending: null, canP: true, canB: true, ferro: false, done: false
+    };
+    hand.man = CYCLE[(CYCLE.indexOf(hand.vira.r) + 1) % CYCLE.length];
+    var m11p = sP === 11, m11b = sB === 11;
+    if ((m11p || m11b) && !(m11p && m11b)){ hand.stake = 3; hand.canP = hand.canB = false; }
+    if (m11p && m11b){ hand.stake = 3; hand.canP = hand.canB = false; hand.ferro = true; }
+    busy = false;
+    render();
+    status(hand.turn === 'p' ? 'Sua vez — jogue uma carta ou truque!' : 'Vez do bot…');
+    if (hand.turn === 'b') setTimeout(botTurn, 800);
+  }
+  function power(c){ return c.r === hand.man ? 100 + c.suit.p : BASE[c.r]; }
+  function strength(hs){ var s = 0; for (var i = 0; i < hs.length; i++){ var c = hs[i]; if (c.r === hand.man) s += 3; else if (c.r === '3' || c.r === '2' || c.r === 'A') s += 1; } return s; }
+
+  function cardHTML(c, opts){
+    opts = opts || {};
+    if (c.hidden) return '<div class="card back"></div>';
+    var cls = 'card' + (c.suit.red ? ' red' : '') + (c.r === hand.man ? ' manilha' : '') + (opts.play ? ' playable' : '');
+    return '<div class="' + cls + '" data-i="' + opts.i + '"><span class="r">' + c.r + '</span><span class="s">' + c.suit.s + '</span></div>';
+  }
+  function render(){
+    document.getElementById('sP').textContent = sP;
+    document.getElementById('sB').textContent = sB;
+    document.getElementById('sV').textContent = hand.pending ? hand.pending.level : hand.stake;
+    document.getElementById('info').textContent = 'Vira: ' + hand.vira.r + hand.vira.suit.s + ' · Manilha: ' + hand.man + (hand.ferro ? ' · MÃO DE FERRO (às cegas!)' : '') + ' · Vazas: você ' + wins('p') + ' × ' + wins('b') + ' bot';
+    document.getElementById('viraLbl').innerHTML = 'vira<br><b>' + hand.vira.r + hand.vira.suit.s + '</b>';
+    var fh = '';
+    for (var i = 0; i < hand.b.length; i++) fh += hand.b[i].played ? '' : cardHTML({ hidden: true });
+    document.getElementById('foeHand').innerHTML = fh || '<span style="font-size:12px;color:#ffffff88">bot sem cartas</span>';
+    var mh = '';
+    for (var j = 0; j < hand.p.length; j++){
+      var c = hand.p[j];
+      if (c.played) continue;
+      mh += hand.ferro ? cardHTML({ hidden: true }, { play: !busy && !hand.done && hand.turn === 'p' && !hand.pending, i: j })
+                       : cardHTML(c, { play: !busy && !hand.done && hand.turn === 'p' && !hand.pending, i: j });
+    }
+    var myEl = document.getElementById('myHand');
+    myEl.innerHTML = mh;
+    var pcs = myEl.querySelectorAll('.playable');
+    for (var k = 0; k < pcs.length; k++) pcs[k].onclick = function(){ playCard(+this.dataset.i); };
+    document.getElementById('slotP').innerHTML = hand.tp ? cardHTML(hand.tp) : '<small>VOCÊ</small>';
+    document.getElementById('slotB').innerHTML = hand.tb ? cardHTML(hand.tb) : '<small>BOT</small>';
+    var bT = document.getElementById('bTruco'), bA = document.getElementById('bAccept'), bR = document.getElementById('bRun');
+    if (hand.pending && hand.pending.by === 'b'){
+      bT.disabled = true; bA.disabled = false; bR.disabled = false;
+      bT.textContent = 'TRUCAR';
+    } else {
+      bA.disabled = true; bR.disabled = true;
+      var canAsk = hand.canP && !hand.done && !busy && hand.turn === 'p' && !hand.pending && hand.stake < 12;
+      bT.disabled = !canAsk;
+      bT.textContent = hand.stake === 1 ? 'TRUCAR' : hand.stake === 3 ? 'PEDIR 6' : hand.stake === 6 ? 'PEDIR 9' : 'PEDIR 12';
+    }
+    document.getElementById('bNext').disabled = !hand.done;
+  }
+  function wins(w){ var n = 0; for (var i = 0; i < hand.res.length; i++) if (hand.res[i] === w) n++; return n; }
+  function status(t){ document.getElementById('status').textContent = t; }
+
+  function playCard(i){
+    if (busy || hand.done || hand.turn !== 'p' || hand.pending) return;
+    var c = hand.p[i];
+    if (!c || c.played) return;
+    if (hand.ferro){ var rest = hand.p.filter(x => !x.played); c = rest[Math.floor(Math.random() * rest.length)]; }
+    c.played = true; hand.tp = c;
+    afterPlay('p');
+  }
+  function afterPlay(who){
+    if (hand.tp && hand.tb){ setTimeout(resolveVaza, 700); render(); return; }
+    hand.turn = who === 'p' ? 'b' : 'p';
+    render();
+    if (hand.turn === 'b'){ status('Vez do bot…'); setTimeout(botTurn, 800); }
+    else status('Sua vez!');
+  }
+  function resolveVaza(){
+    var pw = power(hand.tp), bw = power(hand.tb), w;
+    if (pw > bw) w = 'p'; else if (bw > pw) w = 'b'; else w = 't';
+    hand.res.push(w);
+    status(w === 't' ? 'Vaza melada!' : (w === 'p' ? 'Você fez a vaza!' : 'Bot fez a vaza!'));
+    var hw = handWinner();
+    hand.tp = hand.tb = null;
+    if (hw){ endHand(hw); return; }
+    hand.turn = w === 't' ? (hand.turn === 'p' ? 'b' : 'p') : w;
+    render();
+    if (hand.turn === 'b') setTimeout(botTurn, 800);
+  }
+  function handWinner(){
+    var r = hand.res;
+    if (r.length < 2) return null;
+    if (r.length === 2){
+      if (r[0] !== 't' && r[0] === r[1]) return r[0];
+      if (r[0] === 't' && r[1] !== 't') return r[1];
+      return null;
+    }
+    if (r[0] === 't' && r[1] === 't') return r[2] === 't' ? 'dead' : r[2];
+    if (r[0] !== 't' && r[1] === 't') return r[2] === 't' ? r[0] : r[2];
+    if (r[0] !== 't' && r[1] !== 't' && r[0] !== r[1]) return r[2] === 't' ? r[0] : r[2];
+    if (r[0] !== 't' && r[1] !== 't') return r[2] === 't' ? r[0] : r[2];
+    return null;
+  }
+  function endHand(w){
+    hand.done = true;
+    var pts = hand.stake;
+    if (w === 'p') sP += pts; else if (w === 'b') sB += pts;
+    if (w === 'dead') status('Mão morta — ninguém pontua');
+    else status((w === 'p' ? 'Você' : 'Bot') + ' levou a mão (+' + pts + ')');
+    if (sP >= 12 || sB >= 12){
+      status((sP >= 12 ? 'VOCÊ VENCEU A PARTIDA!' : 'BOT VENCEU A PARTIDA!') + ' ' + sP + ' × ' + sB);
+    }
+    render();
+  }
+
+  // truco
+  function nextLevel(){ return hand.stake === 1 ? 3 : hand.stake === 3 ? 6 : hand.stake === 6 ? 9 : 12; }
+  document.getElementById('bTruco').onclick = function(){
+    if (!hand.canP || hand.done || hand.turn !== 'p' || hand.pending) return;
+    hand.pending = { by: 'p', level: nextLevel() };
+    hand.canP = false;
+    status('Você pediu ' + (hand.pending.level === 3 ? 'TRUCO!' : hand.pending.level) + ' — bot pensando…');
+    render();
+    setTimeout(botRespond, 900);
+  };
+  function botRespond(){
+    if (!hand.pending) return;
+    var L = LV[level], s = strength(hand.b.filter(c => !c.played));
+    var accept = s >= L.call || Math.random() < L.bluff;
+    if (accept){
+      hand.stake = hand.pending.level; hand.pending = null; hand.canB = true;
+      status('Bot aceitou! Mão vale ' + hand.stake);
+      render();
+      if (hand.turn === 'b') setTimeout(botTurn, 800);
+    } else {
+      var prev = hand.stake;
+      hand.pending = null;
+      status('Bot correu! Você marca ' + prev);
+      sP += prev;
+      hand.done = true;
+      if (sP >= 12) status('VOCÊ VENCEU A PARTIDA! ' + sP + ' × ' + sB);
+      render();
+    }
+  }
+  document.getElementById('bAccept').onclick = function(){
+    if (!hand.pending || hand.pending.by !== 'b') return;
+    hand.stake = hand.pending.level; hand.pending = null; hand.canP = true;
+    status('Valendo ' + hand.stake + '! Bot joga…');
+    render();
+    setTimeout(botTurn, 800);
+  };
+  document.getElementById('bRun').onclick = function(){
+    if (!hand.pending || hand.pending.by !== 'b') return;
+    var prev = hand.stake;
+    hand.pending = null; hand.done = true;
+    sB += prev;
+    status('Você correu — bot marca ' + prev);
+    if (sB >= 12) status('BOT VENCEU A PARTIDA! ' + sP + ' × ' + sB);
+    render();
+  };
+
+  // bot joga
+  function botTurn(){
+    if (hand.done) return;
+    if (hand.pending) return;
+    var L = LV[level];
+    var avail = hand.b.filter(c => !c.played);
+    // pede truco?
+    if (hand.canB && hand.stake < 12 && strength(avail) >= L.ask && Math.random() < 0.45){
+      hand.pending = { by: 'b', level: nextLevel() };
+      hand.canB = false;
+      status('Bot pediu ' + (hand.pending.level === 3 ? 'TRUCO!' : hand.pending.level) + ' — aceitar ou correr?');
+      render();
+      return;
+    }
+    var pick;
+    if (hand.ferro || Math.random() < L.miss){ pick = avail[Math.floor(Math.random() * avail.length)]; }
+    else if (hand.tp){
+      var tp = power(hand.tp), win = avail.filter(c => power(c) > tp);
+      if (win.length) pick = win.reduce((a, b2) => power(a) < power(b2) ? a : b2);
+      else pick = avail.reduce((a, b2) => power(a) < power(b2) ? a : b2);
+    } else {
+      pick = avail.reduce((a, b2) => power(a) > power(b2) ? a : b2);
+    }
+    pick.played = true; hand.tb = pick;
+    afterPlay('b');
+  }
+
+  document.getElementById('bNew').onclick = newMatch;
+  document.getElementById('bNext').onclick = function(){ if (hand.done && sP < 12 && sB < 12){ mano = mano === 'p' ? 'b' : 'p'; newHand(mano); } };
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') window.location.href = '../index.html'; });
+  lvlSel();
+  newMatch();
+})();
+</script>
+</body>
+</html>

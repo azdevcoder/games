@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>2048</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #f0d9b5; font-family: Georgia, serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .cabinet { background: #161310; border: 4px solid #3a2f24; border-radius: 12px; padding: 18px; width: min(94vw, 440px); text-align: center; }
+  .back { display: inline-block; color: #f0d9b5; text-decoration: none; font-size: 13px; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; border: 2px solid #b58863; padding: 4px 12px; border-radius: 6px; background: #000; }
+  h1 { letter-spacing: 4px; color: #f7ec59; margin-bottom: 8px; }
+  .scores { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+  .score { background: #000; border: 2px solid #3a2f24; border-radius: 8px; padding: 6px 16px; font-size: 11px; color: #b7a98a; }
+  .score b { display: block; font-size: 20px; color: #f0d9b5; font-variant-numeric: tabular-nums; }
+  #status { min-height: 1.6em; font-weight: bold; margin-bottom: 8px; }
+  #board { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 6px; background: #3a2f24; border-radius: 8px; padding: 8px; aspect-ratio: 1/1; touch-action: none; user-select: none; -webkit-user-select: none; margin-bottom: 12px; }
+  .tile { aspect-ratio: 1/1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: clamp(18px, 6vw, 30px); background: #241d16; color: #5a4a33; }
+  .t2 { background: #eee4da; color: #776e65; } .t4 { background: #ede0c8; color: #776e65; }
+  .t8 { background: #f2b179; color: #fff; } .t16 { background: #f59563; color: #fff; }
+  .t32 { background: #f67c5f; color: #fff; } .t64 { background: #f65e3b; color: #fff; }
+  .t128 { background: #edcf72; color: #fff; } .t256 { background: #edcc61; color: #fff; }
+  .t512 { background: #edc850; color: #fff; } .t1024 { background: #edc53f; color: #fff; font-size: clamp(15px, 5vw, 24px); }
+  .t2048 { background: #edc22e; color: #fff; font-size: clamp(15px, 5vw, 24px); box-shadow: 0 0 16px #edc22e; }
+  .tsuper { background: #3c3a32; color: #fff; font-size: clamp(13px, 4.5vw, 20px); }
+  .row { display: flex; gap: 8px; }
+  button { flex: 1; background: #000; color: #f0d9b5; border: 2px solid #b58863; border-radius: 8px; padding: 10px; font-weight: bold; cursor: pointer; font-size: 14px; font-family: inherit; }
+  button:hover { background: #2a2118; }
+  .hint { font-size: 11px; color: #8a9a8a; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main class="cabinet">
+  <a class="back" href="../index.html">‹ JOGOS</a>
+  <h1>2048</h1>
+  <div class="scores"><div class="score">PONTOS<b id="pts">0</b></div><div class="score">RECORDE<b id="best">0</b></div></div>
+  <div id="status">Setas ou arraste para jogar</div>
+  <div id="board"></div>
+  <div class="row"><button id="btnNew">↻ NOVO</button><button id="btnUndo">⤺ DESFAZER</button></div>
+  <div class="hint">Junte iguais até 2048 · ESC volta</div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var N = 4, g, pts, over, won, keepGoing, prev;
+  var boardEl = document.getElementById('board'), ptsEl = document.getElementById('pts'),
+      bestEl = document.getElementById('best'), statusEl = document.getElementById('status');
+  var best = +(localStorage.getItem('g2048best') || 0);
+  bestEl.textContent = best;
+
+  function reset(){ g = Array.from({length:N}, () => Array(N).fill(0)); pts = 0; over = false; won = false; keepGoing = false; prev = null; spawn(); spawn(); render(); statusEl.textContent = 'Setas ou arraste para jogar'; }
+  function spawn(){
+    var e = [];
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) if (!g[r][c]) e.push([r,c]);
+    if (!e.length) return;
+    var p = e[Math.floor(Math.random() * e.length)];
+    g[p[0]][p[1]] = Math.random() < 0.9 ? 2 : 4;
+  }
+  function slide(row){
+    var a = row.filter(Boolean), out = [], gain = 0, i = 0;
+    while (i < a.length){
+      if (i + 1 < a.length && a[i] === a[i+1]){ out.push(a[i]*2); gain += a[i]*2; i += 2; }
+      else { out.push(a[i]); i++; }
+    }
+    while (out.length < N) out.push(0);
+    return { row: out, gain: gain };
+  }
+  function move(dir){
+    if (over) return;
+    prev = { g: g.map(r => r.slice()), pts: pts };
+    var moved = false, gain = 0, ng = Array.from({length:N}, () => Array(N).fill(0)), r, c, res;
+    if (dir === 'L') for (r = 0; r < N; r++){ res = slide(g[r]); ng[r] = res.row; gain += res.gain; }
+    if (dir === 'R') for (r = 0; r < N; r++){ res = slide(g[r].slice().reverse()); ng[r] = res.row.reverse(); gain += res.gain; }
+    if (dir === 'U') for (c = 0; c < N; c++){ var col = []; for (r = 0; r < N; r++) col.push(g[r][c]); res = slide(col); gain += res.gain; for (r = 0; r < N; r++) ng[r][c] = res.row[r]; }
+    if (dir === 'D') for (c = 0; c < N; c++){ var col2 = []; for (r = N-1; r >= 0; r--) col2.push(g[r][c]); res = slide(col2); gain += res.gain; for (r = 0; r < N; r++) ng[N-1-r][c] = res.row[r]; }
+    for (r = 0; r < N; r++) for (c = 0; c < N; c++) if (ng[r][c] !== g[r][c]) moved = true;
+    if (!moved){ prev = null; return; }
+    g = ng; pts += gain;
+    if (pts > best){ best = pts; localStorage.setItem('g2048best', best); bestEl.textContent = best; }
+    ptsEl.textContent = pts;
+    spawn(); render(); check();
+  }
+  function full(){ for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) if (!g[r][c]) return false; return true; }
+  function canMove(){
+    if (!full()) return true;
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++){
+      if (r+1 < N && g[r][c] === g[r+1][c]) return true;
+      if (c+1 < N && g[r][c] === g[r][c+1]) return true;
+    }
+    return false;
+  }
+  function check(){
+    var hit = false, r, c;
+    for (r = 0; r < N && !hit; r++) for (c = 0; c < N; c++) if (g[r][c] === 2048) hit = true;
+    if (hit && !won){ won = true; statusEl.textContent = 'Você fez 2048! Continue ou recomece.'; }
+    if (!canMove()){ over = true; statusEl.textContent = 'Fim de jogo — ' + pts + ' pontos'; }
+    else if (!won) statusEl.textContent = '';
+  }
+  function render(){
+    boardEl.innerHTML = '';
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++){
+      var d = document.createElement('div'), v = g[r][c];
+      d.className = 'tile' + (v ? (v <= 2048 ? ' t' + v : ' tsuper') : '');
+      if (v) d.textContent = v;
+      boardEl.appendChild(d);
+    }
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape'){ window.location.href = '../index.html'; return; }
+    var m = { ArrowLeft: 'L', ArrowRight: 'R', ArrowUp: 'U', ArrowDown: 'D', a: 'L', d: 'R', w: 'U', s: 'D' };
+    if (m[e.key]){ e.preventDefault(); move(m[e.key]); }
+  });
+  var tx = 0, ty = 0;
+  boardEl.addEventListener('touchstart', function(e){ var t = e.changedTouches[0]; tx = t.clientX; ty = t.clientY; }, { passive: true });
+  boardEl.addEventListener('touchend', function(e){
+    var t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+  }, { passive: true });
+  document.getElementById('btnNew').onclick = reset;
+  document.getElementById('btnUndo').onclick = function(){ if (prev){ g = prev.g; pts = prev.pts; ptsEl.textContent = pts; over = false; prev = null; render(); statusEl.textContent = ''; } };
+  reset();
+})();
+</script>
+</body>
+</html>

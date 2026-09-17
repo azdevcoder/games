@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jogo da Velha</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #33ff66; font-family: "Courier New", Courier, monospace; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .cabinet { background: #111; border: 4px solid #2a2a2a; border-radius: 12px; padding: 20px; width: min(94vw, 420px); text-align: center; box-shadow: 0 0 40px rgba(51,255,102,.15); }
+  .back { display: inline-block; color: #33ff66; text-decoration: none; font-size: 13px; font-weight: bold; letter-spacing: 2px; margin-bottom: 10px; border: 2px solid #33ff66; padding: 4px 12px; border-radius: 6px; background: #000; }
+  h1 { letter-spacing: 3px; text-shadow: 0 0 8px #33ff66; margin-bottom: 4px; font-size: 24px; }
+  h1 svg { width: 26px; height: 26px; vertical-align: -5px; }
+  #status { min-height: 1.8em; font-weight: bold; margin: 8px 0; font-size: 16px; }
+  #board { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; background: #000; border: 3px solid #33ff66; padding: 8px; border-radius: 8px; aspect-ratio: 1/1; margin-bottom: 12px; }
+  .cell { aspect-ratio: 1/1; background: #1a2b1a; border: 1px solid #2f5f2f; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .cell:not(.done):hover { background: #243d24; }
+  .cell.done { cursor: default; }
+  .cell svg { width: 62%; height: 62%; }
+  .cell.win { background: #062b12; outline: 2px solid #ffee33; }
+  .score { display: flex; justify-content: space-around; background: #000; border: 2px solid #33ff66; border-radius: 8px; padding: 8px; margin-bottom: 12px; font-size: 14px; }
+  .score b { font-size: 20px; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; }
+  button, select { background: #000; color: #33ff66; border: 2px solid #33ff66; border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 13px; font-weight: bold; cursor: pointer; }
+  button:hover { background: #062b12; }
+  label.cfg { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #9dffb8; flex: 1; text-align: left; }
+  select { width: 100%; }
+  .hint { font-size: 11px; color: #9dffb8; margin-top: 6px; }
+</style>
+</head>
+<body>
+<main class="cabinet">
+  <a class="back" href="../index.html">‹ JOGOS</a>
+  <h1><svg viewBox="0 0 24 24" fill="none" stroke="#33ff66" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg> VELHA <svg viewBox="0 0 24 24" fill="none" stroke="#ffee33" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg></h1>
+  <div id="status">Sua vez (X)</div>
+  <div id="board"></div>
+  <div class="score"><span>X VOCÊ<br><b id="sX">0</b></span><span>EMPATES<br><b id="sD">0</b></span><span>O BOT<br><b id="sO">0</b></span></div>
+  <div class="row">
+    <label class="cfg">Modo
+      <select id="mode">
+        <option value="2p">2 jogadores</option>
+        <option value="bot" selected>Contra o bot</option>
+      </select>
+    </label>
+    <label class="cfg">Nível
+      <select id="level">
+        <option value="facil">Fácil</option>
+        <option value="medio" selected>Médio</option>
+        <option value="impossivel">Impossível</option>
+      </select>
+    </label>
+  </div>
+  <div class="row"><button id="btnNew" style="flex:1">↻ NOVO JOGO</button><button id="btnZero" style="flex:1">ZERAR PLACAR</button></div>
+  <div class="hint">Clique numa casa vazia · ESC volta</div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var boardEl = document.getElementById('board'), statusEl = document.getElementById('status');
+  var modeEl = document.getElementById('mode'), levelEl = document.getElementById('level');
+  var sX = document.getElementById('sX'), sD = document.getElementById('sD'), sO = document.getElementById('sO');
+  var XSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#33ff66" stroke-width="2.6" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>';
+  var OSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#ffee33" stroke-width="2.6"><circle cx="12" cy="12" r="7.5"/></svg>';
+  var WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  var b, turn, over, winLine, botMark;
+
+  function reset(){ b = Array(9).fill(''); turn = 'X'; over = false; winLine = []; botMark = 'O'; render(); maybeBot(); }
+  function winner(bd){
+    for (var i = 0; i < WINS.length; i++){
+      var w = WINS[i];
+      if (bd[w[0]] && bd[w[0]] === bd[w[1]] && bd[w[1]] === bd[w[2]]) return { mark: bd[w[0]], line: w };
+    }
+    return bd.indexOf('') === -1 ? { mark: 'D', line: [] } : null;
+  }
+  function empties(bd){ var o = []; for (var i = 0; i < 9; i++) if (!bd[i]) o.push(i); return o; }
+  function minimax(bd, me, isMax, depth){
+    var w = winner(bd);
+    if (w) return w.mark === 'D' ? 0 : (w.mark === me ? 10 - depth : depth - 10);
+    var em = empties(bd), best = isMax ? -99 : 99, v, nb;
+    for (var i = 0; i < em.length; i++){
+      nb = bd.slice(); nb[em[i]] = isMax ? me : (me === 'X' ? 'O' : 'X');
+      v = minimax(nb, me, !isMax, depth + 1);
+      best = isMax ? Math.max(best, v) : Math.min(best, v);
+    }
+    return best;
+  }
+  function bestMove(bd, me){
+    var em = empties(bd), bi = em[0], bv = -99, v, nb;
+    for (var i = 0; i < em.length; i++){
+      nb = bd.slice(); nb[em[i]] = me;
+      v = minimax(nb, me, false, 0);
+      if (v > bv){ bv = v; bi = em[i]; }
+    }
+    return bi;
+  }
+  function greedy(bd, me){
+    var foe = me === 'X' ? 'O' : 'X', em = empties(bd), nb, i;
+    for (i = 0; i < em.length; i++){ nb = bd.slice(); nb[em[i]] = me; if (winner(nb) && winner(nb).mark === me) return em[i]; }
+    for (i = 0; i < em.length; i++){ nb = bd.slice(); nb[em[i]] = foe; if (winner(nb) && winner(nb).mark === foe) return em[i]; }
+    if (!bd[4]) return 4;
+    return em[Math.floor(Math.random() * em.length)];
+  }
+  function botMove(){
+    var lv = levelEl.value;
+    if (lv === 'facil'){ var em = empties(b); return em[Math.floor(Math.random() * em.length)]; }
+    if (lv === 'medio') return greedy(b, botMark);
+    return bestMove(b, botMark);
+  }
+  function maybeBot(){
+    if (over || modeEl.value !== 'bot' || turn !== botMark) return;
+    statusEl.textContent = 'Bot pensando…';
+    setTimeout(function(){
+      if (over || turn !== botMark) return;
+      play(botMove());
+    }, 350);
+  }
+  function play(i){
+    if (over || b[i]) return;
+    b[i] = turn;
+    var w = winner(b);
+    if (w){
+      over = true; winLine = w.line;
+      if (w.mark === 'D'){ sD.textContent = +sD.textContent + 1; statusEl.textContent = 'Empate!'; }
+      else {
+        if (w.mark === 'X') sX.textContent = +sX.textContent + 1; else sO.textContent = +sO.textContent + 1;
+        statusEl.textContent = w.mark === 'X' ? 'X venceu!' : 'O venceu!';
+      }
+    } else {
+      turn = turn === 'X' ? 'O' : 'X';
+      statusEl.textContent = modeEl.value === 'bot' ? (turn === 'X' ? 'Sua vez (X)' : 'Vez do bot (O)') : 'Vez do ' + turn;
+    }
+    render(); maybeBot();
+  }
+  function render(){
+    boardEl.innerHTML = '';
+    for (var i = 0; i < 9; i++){
+      (function(i){
+        var d = document.createElement('div');
+        d.className = 'cell' + (b[i] ? ' done' : '') + (winLine.indexOf(i) !== -1 ? ' win' : '');
+        if (b[i]) d.innerHTML = b[i] === 'X' ? XSVG : OSVG;
+        d.onclick = function(){ play(i); };
+        boardEl.appendChild(d);
+      })(i);
+    }
+  }
+  document.getElementById('btnNew').onclick = reset;
+  document.getElementById('btnZero').onclick = function(){ sX.textContent = '0'; sD.textContent = '0'; sO.textContent = '0'; reset(); };
+  modeEl.onchange = reset; levelEl.onchange = reset;
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') window.location.href = '../index.html'; });
+  reset();
+})();
+</script>
+</body>
+</html>

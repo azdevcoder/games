@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Batalha Naval</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #04121f; color: #7dd3fc; font-family: "Courier New", Courier, monospace; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .cabinet { background: #071c30; border: 4px solid #155e85; border-radius: 12px; padding: 18px; width: min(96vw, 880px); text-align: center; }
+  .back { display: inline-block; color: #7dd3fc; text-decoration: none; font-size: 13px; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; border: 2px solid #38bdf8; padding: 4px 12px; border-radius: 6px; background: #00000055; }
+  h1 { letter-spacing: 3px; color: #e0f2fe; margin-bottom: 4px; }
+  #status { min-height: 1.8em; font-weight: bold; margin: 6px 0; font-size: 15px; }
+  .fleets { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .fleet { flex: 1 1 260px; max-width: 400px; min-width: 240px; }
+  .fleet h3 { font-size: 13px; margin-bottom: 6px; letter-spacing: 2px; }
+  .grid { display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); gap: 2px; background: #082f49; border: 3px solid #38bdf8; border-radius: 6px; padding: 5px; aspect-ratio: 1/1; }
+  .cell { aspect-ratio: 1/1; background: #0c4a6e; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: clamp(8px, 2.4vw, 14px); font-weight: bold; }
+  #enemy .cell:not(.shot):hover { background: #0369a1; cursor: crosshair; }
+  .cell.ship { background: #475569; }
+  .cell.hit { background: #991b1b; color: #fff; }
+  .cell.miss { background: #082f49; color: #38bdf8; }
+  .cell.sunk { background: #450a0a; color: #fca5a5; outline: 1px solid #f87171; }
+  .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+  button, select { background: #00000055; color: #7dd3fc; border: 2px solid #38bdf8; border-radius: 8px; padding: 9px 14px; font-family: inherit; font-size: 13px; font-weight: bold; cursor: pointer; }
+  button:hover:not(:disabled) { background: #0c4a6e; }
+  button:disabled { opacity: .35; cursor: default; }
+  .hint { font-size: 11px; color: #67a9c9; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main class="cabinet">
+  <a class="back" href="../index.html">‹ JOGOS</a>
+  <h1>BATALHA NAVAL</h1>
+  <div id="status">Posicione sua frota e ataque!</div>
+  <div class="fleets">
+    <div class="fleet"><h3>SUA FROTA</h3><div class="grid" id="mine"></div></div>
+    <div class="fleet"><h3>MAR INIMIGO</h3><div class="grid" id="enemy"></div></div>
+  </div>
+  <div class="row">
+    <button id="btnPlace">EMBARALHAR FROTA</button>
+    <select id="level"><option value="facil">Bot: Fácil</option><option value="medio" selected>Bot: Médio</option><option value="dificil">Bot: Difícil</option></select>
+    <button id="btnNew">↻ NOVO JOGO</button>
+  </div>
+  <div class="hint">Clique no mar inimigo para atirar · afunde os 5 navios antes do bot · ESC volta</div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var N = 10, SHIPS = [5, 4, 3, 3, 2];
+  var mineEl = document.getElementById('mine'), enemyEl = document.getElementById('enemy'), statusEl = document.getElementById('status');
+  var myShips, foShips, myShots, foShots, over, busy;
+
+  function empty(){ return Array.from({length:N}, () => Array(N).fill(0)); }
+  function placeAll(){
+    var bd = empty(), cells = [];
+    for (var s = 0; s < SHIPS.length; s++){
+      var len = SHIPS[s], ok = false, guard = 0;
+      while (!ok && guard++ < 500){
+        var horiz = Math.random() < 0.5, r = Math.floor(Math.random() * N), c = Math.floor(Math.random() * N);
+        ok = true;
+        for (var i = 0; i < len; i++){
+          var rr = r + (horiz ? 0 : i), cc = c + (horiz ? i : 0);
+          if (rr >= N || cc >= N || bd[rr][cc]){ ok = false; break; }
+        }
+        if (ok) for (var j = 0; j < len; j++){
+          var r2 = r + (horiz ? 0 : j), c2 = c + (horiz ? j : 0);
+          bd[r2][c2] = s + 1; cells.push({ r: r2, c: c2, s: s });
+        }
+      }
+    }
+    return { bd: bd, cells: cells };
+  }
+  function reset(){
+    var a = placeAll(), b = placeAll();
+    myShips = a; foShips = b; myShots = empty(); foShots = empty();
+    over = false; busy = false;
+    statusEl.textContent = 'Posicione sua frota e ataque!';
+    render();
+  }
+  function sunkCells(info, shots){
+    var sunk = {};
+    for (var s = 0; s < SHIPS.length; s++){
+      var parts = info.cells.filter(c => c.s === s);
+      if (parts.length && parts.every(c => shots[c.r][c.c] === 'hit')) parts.forEach(c => sunk[c.r + ',' + c.c] = true);
+    }
+    return sunk;
+  }
+  function allSunk(info, shots){ return info.cells.every(c => shots[c.r][c.c] === 'hit'); }
+  function shootEnemy(r, c){
+    if (over || busy || myShots[r][c]) return;
+    myShots[r][c] = foShips.bd[r][c] ? 'hit' : 'miss';
+    if (allSunk(foShips, myShots)){ over = true; statusEl.textContent = 'VITÓRIA! Você afundou a frota inimiga'; render(); return; }
+    var sk = sunkCells(foShips, myShots);
+    statusEl.textContent = myShots[r][c] === 'hit' ? (sk[r + ',' + c] ? 'Afundou um navio inimigo!' : 'Acertou! Bot responde…') : 'Água… bot responde…';
+    busy = true; render();
+    setTimeout(botShoot, 550);
+  }
+  function candidates(){
+    var lv = document.getElementById('level').value, cands = [], r, c;
+    var hits = [];
+    for (r = 0; r < N; r++) for (c = 0; c < N; c++) if (foShots[r][c] === 'hit') hits.push([r,c]);
+    var sk = sunkCells(myShips, foShots);
+    hits = hits.filter(h => !sk[h[0] + ',' + h[1]]);
+    if (lv !== 'facil' && hits.length){
+      var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      for (var i = 0; i < hits.length; i++) for (var d = 0; d < 4; d++){
+        var rr = hits[i][0] + dirs[d][0], cc = hits[i][1] + dirs[d][1];
+        if (rr >= 0 && rr < N && cc >= 0 && cc < N && !foShots[rr][cc]) cands.push([rr,cc]);
+      }
+      if (cands.length) return cands;
+    }
+    for (r = 0; r < N; r++) for (c = 0; c < N; c++){
+      if (foShots[r][c]) continue;
+      if (lv === 'dificil' && (r + c) % 2 === 1 && !hits.length) continue;
+      cands.push([r,c]);
+    }
+    return cands.length ? cands : [[0,0]];
+  }
+  function botShoot(){
+    if (over){ busy = false; return; }
+    var c = candidates(), p = c[Math.floor(Math.random() * c.length)];
+    foShots[p[0]][p[1]] = myShips.bd[p[0]][p[1]] ? 'hit' : 'miss';
+    if (allSunk(myShips, foShots)){ over = true; statusEl.textContent = 'DERROTA — sua frota foi afundada'; }
+    else {
+      var sk = sunkCells(myShips, foShots);
+      statusEl.textContent = foShots[p[0]][p[1]] === 'hit' ? (sk[p[0] + ',' + p[1]] ? 'Bot afundou um navio seu! Sua vez.' : 'Bot acertou! Sua vez.') : 'Bot errou. Sua vez de atirar!';
+    }
+    busy = false; render();
+  }
+  function render(){
+    renderGrid(mineEl, myShips, foShots, true);
+    renderGrid(enemyEl, foShips, myShots, false);
+  }
+  function renderGrid(el, info, shots, own){
+    var sk = sunkCells(info, shots);
+    el.innerHTML = '';
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++){
+      (function(r, c){
+        var d = document.createElement('div'), v = shots[r][c];
+        d.className = 'cell';
+        if (v === 'hit'){ d.classList.add(sk[r + ',' + c] ? 'sunk' : 'hit'); d.textContent = '✕'; }
+        else if (v === 'miss'){ d.classList.add('miss'); d.textContent = '·'; }
+        else if (own && info.bd[r][c]) d.classList.add('ship');
+        if (!own && !v && !over && !busy) d.onclick = function(){ shootEnemy(r, c); };
+        el.appendChild(d);
+      })(r, c);
+    }
+  }
+  document.getElementById('btnPlace').onclick = function(){ if (!over){ var a = placeAll(); myShips = a; foShots = empty(); render(); } };
+  document.getElementById('btnNew').onclick = reset;
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') window.location.href = '../index.html'; });
+  reset();
+})();
+</script>
+</body>
+</html>

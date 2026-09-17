@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cacheta (Pife)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #101c2e; color: #f0d9b5; font-family: Georgia, serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .cabinet { background: #16263f; border: 4px solid #7c8db0; border-radius: 12px; padding: 16px; width: min(96vw, 640px); text-align: center; }
+  .back { display: inline-block; color: #f0d9b5; text-decoration: none; font-size: 13px; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; border: 2px solid #7c8db0; padding: 4px 12px; border-radius: 6px; background: #00000055; }
+  h1 { letter-spacing: 3px; color: #cfe0ff; }
+  .placar { display: flex; gap: 8px; justify-content: center; margin: 8px 0; font-size: 13px; }
+  .placar div { background: #00000055; border: 2px solid #7c8db0; border-radius: 8px; padding: 6px 16px; }
+  .placar b { font-size: 20px; color: #fff; }
+  #status { min-height: 2.2em; font-weight: bold; font-size: 15px; margin: 6px 0; color: #fff; }
+  .table { display: flex; gap: 16px; justify-content: center; align-items: flex-start; margin: 8px 0; }
+  .pile { display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 11px; color: #9db1d1; }
+  .card { width: 62px; height: 90px; background: #fff; border-radius: 8px; color: #111; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; box-shadow: 2px 2px 6px #0008; }
+  .card .r { font-size: 20px; } .card .s { font-size: 22px; }
+  .card.red { color: #c02020; }
+  .card.back { background: repeating-linear-gradient(45deg, #1e3a5f, #1e3a5f 6px, #2c5282 6px, #2c5282 12px); }
+  .card.small { width: 40px; height: 58px; } .card.small .r { font-size: 14px; } .card.small .s { font-size: 15px; }
+  .pile .card { cursor: pointer; } .pile .card:hover { outline: 3px solid #ffe27a; }
+  .hand { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 10px 0; min-height: 94px; }
+  .hand .card { cursor: pointer; }
+  .hand .card:hover { transform: translateY(-6px); outline: 3px solid #ffe27a; }
+  .hand .card.inmeld { outline: 3px solid #7CFC00; }
+  .hand .card.locked { opacity: .45; cursor: default; }
+  #melds { font-size: 12px; color: #9db1d1; min-height: 1.6em; }
+  .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+  button, select { background: #00000066; color: #cfe0ff; border: 2px solid #7c8db0; border-radius: 8px; padding: 9px 14px; font-weight: bold; cursor: pointer; font-size: 13px; font-family: inherit; }
+  button:hover:not(:disabled) { background: #2c5282; }
+  button:disabled { opacity: .35; cursor: default; }
+  .hint { font-size: 11px; color: #8fa3c4; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main class="cabinet">
+  <a class="back" href="../index.html">‹ JOGOS</a>
+  <h1>CACHETA</h1>
+  <div class="placar"><div>VOCÊ<br><b id="sP">0</b></div><div>META<br><b>100</b></div><div>BOT<br><b id="sB">0</b></div></div>
+  <div id="status"></div>
+  <div class="table">
+    <div class="pile">MONTE (<span id="stockN"></span>)<div class="card back" id="stock"></div><span>comprar</span></div>
+    <div class="pile">DESCARTE<div id="pileTop"></div><span>clique p/ pegar</span></div>
+    <div class="pile">BOT<div id="botInfo" style="font-size:12px"></div><span id="botN"></span></div>
+  </div>
+  <div class="hand" id="myHand"></div>
+  <div id="melds"></div>
+  <div class="row">
+    <select id="level"><option value="facil">Bot: Fácil</option><option value="medio" selected>Bot: Médio</option><option value="dificil">Bot: Difícil</option></select>
+    <button id="bNew">↻ NOVA PARTIDA</button>
+    <button id="bNext" disabled>PRÓXIMA RODADA</button>
+  </div>
+  <div class="hint">Compre do monte ou do descarte, depois descarte 1 carta · 9 cartas em jogos = batida · carta do descarte não pode voltar na mesma vez · ESC volta</div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var SUITS = [{s:'♦',red:true},{s:'♠',red:false},{s:'♥',red:true},{s:'♣',red:false}];
+  var RN = {1:'A',11:'J',12:'Q',13:'K'};
+  var TARGET = 100;
+  var sP = 0, sB = 0, stock, pile, ph, bh, phase, justTook, roundOver, first;
+
+  function rn(r){ return RN[r] || r; }
+  function cv(c){ return c.r === 1 ? 1 : Math.min(c.r, 10); }
+  function fullDeck(){
+    var d = [];
+    for (var s = 0; s < 4; s++) for (var r = 1; r <= 13; r++) d.push({ r: r, s: s });
+    for (var i = d.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = d[i]; d[i] = d[j]; d[j] = t; }
+    return d;
+  }
+  function newMatch(){ sP = 0; sB = 0; first = 'p'; newRound(); }
+  function newRound(){
+    stock = fullDeck();
+    ph = []; bh = [];
+    for (var i = 0; i < 9; i++){ ph.push(stock.pop()); bh.push(stock.pop()); }
+    pile = [stock.pop()];
+    phase = first === 'p' ? 'buy' : 'bot'; justTook = null; roundOver = false;
+    sortHand(ph);
+    status(first === 'p' ? 'Sua vez — compre do monte ou do descarte' : 'Bot começa…');
+    render();
+    if (phase === 'bot') setTimeout(botTurn, 800);
+  }
+  function sortHand(h){ h.sort((a, b) => a.s - b.s || a.r - b.r); }
+
+  // particionamento: todos os jogos possíveis + backtracking p/ menor madeira
+  function allMelds(h){
+    var out = [], i, j, k;
+    var byRank = {};
+    for (i = 0; i < h.length; i++){ (byRank[h[i].r] = byRank[h[i].r] || []).push(i); }
+    for (var rk in byRank){
+      var g = byRank[rk];
+      if (g.length >= 3) for (i = 0; i < g.length; i++) for (j = i+1; j < g.length; j++) for (k = j+1; k < g.length; k++){
+        out.push([g[i], g[j], g[k]]);
+        if (g.length === 4){ var four = g.slice(); out.push(four); }
+      }
+    }
+    var bySuit = {};
+    for (i = 0; i < h.length; i++){ (bySuit[h[i].s] = bySuit[h[i].s] || []).push({ i: i, r: h[i].r }); }
+    for (var st in bySuit){
+      var v = bySuit[st].slice().sort((a, b) => a.r - b.r);
+      for (i = 0; i < v.length; i++) for (j = i + 2; j < v.length; j++){
+        var ok = true;
+        for (k = i; k < j; k++) if (v[k+1].r !== v[k].r + 1){ ok = false; break; }
+        if (ok){ var idx = []; for (k = i; k <= j; k++) idx.push(v[k].i); out.push(idx); }
+      }
+    }
+    return out;
+  }
+  function bestPartition(h){
+    var melds = allMelds(h), best = { dead: h.reduce((a, c) => a + cv(c), 0), used: [] };
+    function rec(mi, used, dead){
+      if (dead < best.dead) best = { dead: dead, used: used.slice() };
+      for (var i = mi; i < melds.length; i++){
+        var m = melds[i], clash = false, gain = 0;
+        for (var k = 0; k < m.length; k++){ if (used[m[k]]){ clash = true; break; } gain += cv(h[m[k]]); }
+        if (clash) continue;
+        for (k = 0; k < m.length; k++) used[m[k]] = true;
+        rec(i + 1, used, dead - gain);
+        for (k = 0; k < m.length; k++) used[m[k]] = false;
+      }
+    }
+    rec(0, Array(h.length).fill(false), best.dead);
+    return best;
+  }
+  function baterOptions(h, forbid){
+    var out = [];
+    for (var i = 0; i < h.length; i++){
+      if (forbid && h[i] === forbid) continue;
+      var rest = h.slice(0, i).concat(h.slice(i + 1));
+      if (rest.length === 9 && bestPartition(rest).dead === 0) out.push(h[i]);
+    }
+    return out;
+  }
+
+  function cardHTML(c, cls){
+    var red = SUITS[c.s].red ? ' red' : '';
+    return '<div class="card ' + (cls || '') + red + '"><span class="r">' + rn(c.r) + '</span><span class="s">' + SUITS[c.s].s + '</span></div>';
+  }
+  function status(t){ document.getElementById('status').innerHTML = t; }
+  function render(){
+    document.getElementById('sP').textContent = sP;
+    document.getElementById('sB').textContent = sB;
+    document.getElementById('stockN').textContent = stock.length;
+    document.getElementById('pileTop').innerHTML = pile.length ? cardHTML(pile[pile.length-1]) : '<div class="card back" style="opacity:.3"></div>';
+    document.getElementById('botN').textContent = bh.length + ' cartas';
+    document.getElementById('botInfo').innerHTML = 'madeira: <b>' + bestPartition(bh).dead + '</b>';
+    var part = bestPartition(ph), used = {};
+    part.used.forEach(m => m.forEach(i => used[i] = true));
+    var el = document.getElementById('myHand');
+    el.innerHTML = '';
+    var bate = phase === 'discard' ? baterOptions(ph, justTook) : [];
+    for (var i = 0; i < ph.length; i++){
+      (function(i){
+        var d = document.createElement('div');
+        d.innerHTML = cardHTML(ph[i], (used[i] ? 'inmeld ' : '') + (phase !== 'discard' || (justTook && ph[i] === justTook) ? 'locked' : ''));
+        var c = d.firstChild;
+        if (phase === 'discard' && !(justTook && ph[i] === justTook)) c.onclick = function(){ discard(i, bate.indexOf(ph[i]) !== -1); };
+        el.appendChild(c);
+      })(i);
+    }
+    var dw = part.dead;
+    document.getElementById('melds').textContent = 'Seus jogos: ' + part.used.length + ' · madeira: ' + dw + (bate.length ? ' · BATIDA descartando ' + bate.map(c => rn(c.r) + SUITS[c.s].s).join(', ') : '');
+    document.getElementById('bNext').disabled = !roundOver;
+    document.getElementById('stock').style.opacity = phase === 'buy' && !roundOver ? 1 : 0.45;
+  }
+
+  function takeStock(){
+    if (phase !== 'buy' || roundOver) return;
+    if (!stock.length) reshuffle();
+    ph.push(stock.pop()); justTook = null; phase = 'discard'; sortHand(ph);
+    status('Descarte uma carta' + (baterOptions(ph, null).length ? ' — <b>DÁ PRA BATER!</b>' : ''));
+    render();
+  }
+  function takePile(){
+    if (phase !== 'buy' || roundOver || !pile.length) return;
+    var c = pile.pop();
+    ph.push(c); justTook = c; phase = 'discard'; sortHand(ph);
+    status('Descarte uma carta (a do descarte não pode voltar agora)' + (baterOptions(ph, c).length ? ' — <b>DÁ PRA BATER!</b>' : ''));
+    render();
+  }
+  function reshuffle(){
+    var top = pile.pop();
+    stock = pile; pile = [top];
+    for (var i = stock.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = stock[i]; stock[i] = stock[j]; stock[j] = t; }
+  }
+  function discard(i, batida){
+    if (phase !== 'discard' || roundOver) return;
+    var c = ph[i];
+    if (justTook && c === justTook) return;
+    ph.splice(i, 1); pile.push(c);
+    if (batida || bestPartition(ph).dead === 0){ endRound('p'); return; }
+    phase = 'bot'; justTook = null;
+    status('Bot jogando…');
+    render();
+    setTimeout(botTurn, 800);
+  }
+  function endRound(w){
+    roundOver = true;
+    var loserHand = w === 'p' ? bh : ph;
+    var pts = bestPartition(loserHand).dead;
+    if (w === 'p') sP += pts; else sB += pts;
+    status((w === 'p' ? 'VOCÊ BATEU!' : 'BOT BATEU!') + ' +' + pts + ' pontos' + (sP >= TARGET || sB >= TARGET ? ' — <b>' + (sP >= TARGET ? 'VOCÊ VENCEU!' : 'BOT VENCEU!') + '</b>' : ''));
+    first = first === 'p' ? 'b' : 'p';
+    render();
+  }
+
+  function botTurn(){
+    if (roundOver) return;
+    var lv = document.getElementById('level').value;
+    var top = pile[pile.length - 1], took = null;
+    var takeIt = false;
+    if (lv === 'facil'){ takeIt = Math.random() < 0.25; }
+    else {
+      var before = bestPartition(bh).dead;
+      var test = bh.concat([top]);
+      takeIt = bestPartition(test).dead < before || baterOptions(test, top).length > 0;
+      if (lv === 'medio' && Math.random() < 0.2) takeIt = !takeIt;
+    }
+    if (takeIt && top){ bh.push(pile.pop()); took = top; }
+    else { if (!stock.length) reshuffle(); bh.push(stock.pop()); }
+    sortHand(bh);
+    // descarta
+    var opts = bh.filter(c => c !== took), di = -1;
+    if (lv === 'facil' || !opts.length){ di = Math.floor(Math.random() * bh.length); }
+    else {
+      var bd = 1e9;
+      for (var i = 0; i < bh.length; i++){
+        if (bh[i] === took) continue;
+        var rest = bh.slice(0, i).concat(bh.slice(i + 1));
+        var d = bestPartition(rest).dead - cv(bh[i]) * 0.01;
+        if (d < bd){ bd = d; di = i; }
+      }
+      if (di === -1) di = 0;
+    }
+    var dc = bh[di]; bh.splice(di, 1); pile.push(dc);
+    if (bestPartition(bh).dead === 0 && bh.length === 9){ endRound('b'); return; }
+    phase = 'buy'; justTook = null;
+    status('Sua vez — compre do monte ou do descarte');
+    render();
+  }
+
+  document.getElementById('stock').onclick = takeStock;
+  document.getElementById('pileTop').onclick = takePile;
+  document.getElementById('bNew').onclick = newMatch;
+  document.getElementById('bNext').onclick = function(){ if (roundOver && sP < TARGET && sB < TARGET) newRound(); };
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') window.location.href = '../index.html'; });
+  newMatch();
+})();
+</script>
+</body>
+</html>

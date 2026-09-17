@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blackjack 21</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a2e14; color: #f0d9b5; font-family: Georgia, serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .cabinet { background: #0d3b1a; border: 4px solid #c9a227; border-radius: 12px; padding: 18px; width: min(94vw, 560px); text-align: center; box-shadow: 0 0 40px rgba(201,162,39,.25); }
+  .back { display: inline-block; color: #f0d9b5; text-decoration: none; font-size: 13px; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; border: 2px solid #c9a227; padding: 4px 12px; border-radius: 6px; background: #00000055; }
+  h1 { letter-spacing: 3px; color: #ffe27a; margin-bottom: 4px; }
+  .felt { background: #07602a; border: 3px solid #c9a227; border-radius: 10px; padding: 12px; margin: 10px 0; }
+  .hand-label { font-size: 12px; color: #ffe9a8; text-align: left; margin: 6px 0 4px; }
+  .hand-label b { color: #fff; }
+  .cards { display: flex; gap: 8px; flex-wrap: wrap; min-height: 96px; }
+  .card { width: 64px; height: 92px; background: #fff; border-radius: 8px; color: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; box-shadow: 2px 2px 6px #0008; }
+  .card .r { font-size: 22px; line-height: 1; }
+  .card .s { font-size: 26px; line-height: 1; }
+  .card.red { color: #c02020; }
+  .card.back { background: repeating-linear-gradient(45deg, #7a1020, #7a1020 6px, #a01828 6px, #a01828 12px); }
+  #status { min-height: 1.8em; font-weight: bold; font-size: 17px; margin: 6px 0; color: #ffe27a; }
+  .bank { display: flex; gap: 8px; justify-content: center; margin-bottom: 6px; font-size: 14px; }
+  .bank div { background: #00000055; border: 2px solid #c9a227; border-radius: 8px; padding: 6px 14px; }
+  .bank b { color: #ffe27a; font-size: 18px; }
+  .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  button { flex: 1; min-width: 90px; background: #00000066; color: #ffe27a; border: 2px solid #c9a227; border-radius: 8px; padding: 10px; font-weight: bold; cursor: pointer; font-size: 14px; font-family: inherit; }
+  button:hover:not(:disabled) { background: #c9a227; color: #111; }
+  button:disabled { opacity: .35; cursor: default; }
+  .bets { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+  .bets button { flex: none; border-radius: 50%; width: 56px; height: 56px; min-width: 0; padding: 0; }
+  .hint { font-size: 11px; color: #b7d9a8; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main class="cabinet">
+  <a class="back" href="../index.html">‹ JOGOS</a>
+  <h1>BLACKJACK 21</h1>
+  <div class="bank"><div>FICHAS<br><b id="chips">100</b></div><div>APOSTA<br><b id="bet">0</b></div></div>
+  <div id="status">Faça sua aposta</div>
+  <div class="felt">
+    <div class="hand-label">BANCA <b id="dVal"></b></div>
+    <div class="cards" id="dHand"></div>
+    <div class="hand-label">VOCÊ <b id="pVal"></b></div>
+    <div class="cards" id="pHand"></div>
+  </div>
+  <div class="row">
+    <button id="bHit" disabled>PEDIR</button>
+    <button id="bStand" disabled>PARAR</button>
+    <button id="bDouble" disabled>DOBRAR</button>
+    <button id="bDeal" disabled>NOVA MÃO</button>
+  </div>
+  <div class="bets" id="bets">
+    <button data-b="5">5</button><button data-b="10">10</button><button data-b="25">25</button><button data-b="50">50</button>
+  </div>
+  <div class="hint">Blackjack paga 3:2 · banca para em 17 · ESC volta</div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var SUITS = ['♠','♥','♦','♣'];
+  var RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  var deck, pHand, dHand, chips = 100, bet = 0, phase = 'bet';
+  var statusEl = document.getElementById('status');
+
+  function newDeck(){
+    deck = [];
+    for (var d = 0; d < 2; d++) for (var s = 0; s < 4; s++) for (var r = 0; r < 13; r++) deck.push({ r: RANKS[r], s: SUITS[s] });
+    for (var i = deck.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = deck[i]; deck[i] = deck[j]; deck[j] = t; }
+  }
+  function val(h){
+    var t = 0, aces = 0;
+    for (var i = 0; i < h.length; i++){
+      var r = h[i].r;
+      if (r === 'A'){ t += 11; aces++; }
+      else if ('JQK'.indexOf(r) !== -1) t += 10;
+      else t += +r;
+    }
+    while (t > 21 && aces){ t -= 10; aces--; }
+    return t;
+  }
+  function cardHTML(c, hidden){
+    if (hidden) return '<div class="card back"></div>';
+    var red = (c.s === '♥' || c.s === '♦') ? ' red' : '';
+    return '<div class="card' + red + '"><span class="r">' + c.r + '</span><span class="s">' + c.s + '</span></div>';
+  }
+  function render(hideDealer){
+    var ph = '', dh = '', i;
+    for (i = 0; i < pHand.length; i++) ph += cardHTML(pHand[i]);
+    for (i = 0; i < dHand.length; i++) dh += cardHTML(dHand[i], hideDealer && i === 1);
+    document.getElementById('pHand').innerHTML = ph;
+    document.getElementById('dHand').innerHTML = dh;
+    document.getElementById('pVal').textContent = pHand.length ? '(' + val(pHand) + ')' : '';
+    document.getElementById('dVal').textContent = dHand.length ? (hideDealer ? '(' + val([dHand[0]]) + '+?)' : '(' + val(dHand) + ')') : '';
+    document.getElementById('chips').textContent = chips;
+    document.getElementById('bet').textContent = bet;
+  }
+  function setButtons(h, s, db, dl){
+    document.getElementById('bHit').disabled = !h;
+    document.getElementById('bStand').disabled = !s;
+    document.getElementById('bDouble').disabled = !db;
+    document.getElementById('bDeal').disabled = !dl;
+    var bb = document.getElementById('bets').querySelectorAll('button');
+    for (var i = 0; i < bb.length; i++) bb[i].disabled = (phase !== 'bet' || chips < +bb[i].dataset.b);
+  }
+  function deal(){
+    if (bet <= 0) return;
+    if (deck.length < 20) newDeck();
+    pHand = [deck.pop(), deck.pop()]; dHand = [deck.pop(), deck.pop()];
+    phase = 'play';
+    render(true);
+    var pv = val(pHand), dv = val(dHand);
+    if (pv === 21 || dv === 21){ finish(true); return; }
+    statusEl.textContent = 'Pedir, parar ou dobrar?';
+    setButtons(true, true, chips >= bet && pHand.length === 2, false);
+  }
+  function finish(natural){
+    phase = 'done';
+    var pv = val(pHand), dv = val(dHand);
+    while (val(dHand) < 17) dHand.push(deck.pop());
+    dv = val(dHand);
+    var msg;
+    if (natural && pv === 21 && dv !== 21){ chips += Math.floor(bet * 2.5); msg = 'BLACKJACK! Você ganhou ' + Math.floor(bet * 1.5) + ' fichas'; }
+    else if (natural && dv === 21 && pv !== 21){ msg = 'Blackjack da banca. Você perdeu.'; }
+    else if (natural){ chips += bet; msg = 'Empate com blackjacks — aposta devolvida'; }
+    else if (pv > 21){ msg = 'Estourou (' + pv + ') — banca vence'; }
+    else if (dv > 21){ chips += bet * 2; msg = 'Banca estourou (' + dv + ') — você ganhou ' + bet; }
+    else if (pv > dv){ chips += bet * 2; msg = pv + ' contra ' + dv + ' — você ganhou ' + bet; }
+    else if (pv < dv){ msg = pv + ' contra ' + dv + ' — banca vence'; }
+    else { chips += bet; msg = 'Empate — aposta devolvida'; }
+    bet = 0; render(false);
+    if (chips <= 0){ msg += ' · SEM FICHAS — recomeçando com 100'; chips = 100; }
+    statusEl.textContent = msg;
+    setButtons(false, false, false, true);
+  }
+  document.getElementById('bHit').onclick = function(){
+    pHand.push(deck.pop()); render(true);
+    if (val(pHand) > 21) finish(false);
+    else setButtons(true, true, false, false);
+  };
+  document.getElementById('bStand').onclick = function(){ finish(false); };
+  document.getElementById('bDouble').onclick = function(){
+    chips -= bet; bet *= 2; pHand.push(deck.pop());
+    if (val(pHand) > 21) finish(false); else finish(false);
+  };
+  document.getElementById('bDeal').onclick = deal;
+  var bb = document.getElementById('bets').querySelectorAll('button');
+  for (var i = 0; i < bb.length; i++) (function(btn){
+    btn.onclick = function(){
+      var v = +btn.dataset.b;
+      if (phase === 'bet' && chips >= v){ chips -= v; bet += v; render(false); statusEl.textContent = 'Aposta: ' + bet + ' — NOVA MÃO para jogar'; setButtons(false, false, false, true); }
+    };
+  })(bb[i]);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') window.location.href = '../index.html'; });
+  newDeck(); pHand = []; dHand = []; render(false); setButtons(false, false, false, false);
+})();
+</script>
+</body>
+</html>
