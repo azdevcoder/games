@@ -16,6 +16,13 @@
   .board-shell{background:#161310; border:3px solid #3a2f24; border-radius:10px; padding:12px; box-shadow:0 0 30px rgba(181,136,99,.15);}
   #status{min-height:44px; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:bold; background:#000; border:2px solid #b58863; border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:15px;}
   #status.check{border-color:#e33; color:#ffb3b3;}
+  .clocks{display:flex; gap:8px; margin-bottom:10px;}
+  .clock{flex:1; background:#000; border:2px solid #3a2f24; border-radius:8px; padding:6px 10px; text-align:center;}
+  .clock .lbl{font-size:11px; color:#b7a98a;}
+  .clock .t{font-family:monospace; font-size:26px; font-weight:bold;}
+  .clock.active{border-color:#f7ec59; box-shadow:0 0 12px rgba(247,236,89,.35);}
+  .clock.low .t{color:#ff6b6b;}
+  .clock.flagged{border-color:#e33;}
   #board{display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1/1; border:2px solid #3a2f24; border-radius:6px; overflow:hidden; user-select:none; touch-action:manipulation;}
   .sq{position:relative; display:flex; align-items:center; justify-content:center; font-size:clamp(26px,6vw,52px); cursor:pointer; line-height:1;}
   .sq.light{background:var(--light);} .sq.dark{background:var(--dark);}
@@ -48,11 +55,15 @@
 <div class="wrap">
   <header class="top">
     <h1>♞ XADREZ</h1>
-    <p>Regras oficiais FIDE · 2 jogadores locais · roque, en passant, promoção, xeque-mate, afogamento, 50 lances, tripla repetição, material insuficiente</p>
+    <p>Regras oficiais FIDE · 2 jogadores locais · relógio 30 min cada · roque, en passant, promoção, xeque-mate, afogamento, 50 lances, tripla repetição, material insuficiente</p>
   </header>
 
   <div class="board-shell">
     <div id="status">Brancas jogam</div>
+    <div class="clocks">
+      <div class="clock" id="clockW"><div class="lbl">⚪ Brancas</div><div class="t" id="timeW">30:00</div></div>
+      <div class="clock" id="clockB"><div class="lbl">⚫ Pretas</div><div class="t" id="timeB">30:00</div></div>
+    </div>
     <div id="board" role="grid" aria-label="Tabuleiro de xadrez"></div>
   </div>
 
@@ -69,7 +80,7 @@
     <div style="font-size:12px;color:#b7a98a">Toque/clique: seleciona → destino. Lances legais com <b>●</b>; capturas com anel. Promoção abre escolha Dama/Torre/Bispo/Cavalo.</div>
   </aside>
 
-  <footer class="end"><a href="../index.html">← voltar à seleção de jogos</a> · xeque-mate = vitória · afogamento/50 lances/tripla/material = empate</footer>
+  <footer class="end"><a href="../index.html">← voltar à seleção de jogos</a> · xeque-mate/tempo = vitória · afogamento/50 lances/tripla/material = empate · tempo esgotado contra rei solitário = empate</footer>
 </div>
 
 <div id="promo"><div class="box"><div><b>Promover peão para:</b></div><div class="opts" id="promoOpts"></div></div></div>
@@ -86,6 +97,54 @@
 
   var UNI = { w:{k:'♔',q:'♕',r:'♖',b:'♗',n:'♘',p:'♙'}, b:{k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'} };
   var REASONS = { checkmate:'XEQUE-MATE', stalemate:'AFOGAMENTO (empate)', fifty:'EMPATE — regra dos 50 lances', threefold:'EMPATE — tripla repetição', material:'EMPATE — material insuficiente' };
+
+  // Relogio: 30 min regressivos por jogador, conta so de quem tem a vez.
+  var CLOCK_MS = 30 * 60 * 1000;
+  var clock = { w: CLOCK_MS, b: CLOCK_MS };
+  var clockStarted = false, flag = null, lastTick = Date.now();
+  var clockW = document.getElementById('clockW'), clockB = document.getElementById('clockB');
+  var timeW = document.getElementById('timeW'), timeB = document.getElementById('timeB');
+
+  function fmt(ms){
+    var s = Math.max(0, Math.ceil(ms / 1000));
+    var mm = Math.floor(s / 60), ss = s % 60;
+    return (mm < 10 ? '0' + mm : '' + mm) + ':' + (ss < 10 ? '0' + ss : '' + ss);
+  }
+  function bareKing(color){
+    for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) {
+      var p = game.board[r][c];
+      if (p && p.c === color && p.t !== 'k') return false;
+    }
+    return true;
+  }
+  function onFlag(loser){
+    var winner = loser === 'w' ? 'b' : 'w';
+    flag = bareKing(winner) ? { draw: true, loser: loser } : { loser: loser, winner: winner };
+    sel = null; legalCache = [];
+    render();
+  }
+  function tick(){
+    var now = Date.now(), dt = now - lastTick;
+    lastTick = now;
+    if (!clockStarted || flag) return;
+    if (game.status().over) return;
+    var side = game.turn;
+    clock[side] -= dt;
+    if (clock[side] <= 0){ clock[side] = 0; onFlag(side); return; }
+    updateClockUI();
+  }
+  function updateClockUI(){
+    var st = game.status();
+    var running = clockStarted && !flag && !st.over;
+    timeW.textContent = fmt(clock.w);
+    timeB.textContent = fmt(clock.b);
+    clockW.classList.toggle('active', running && game.turn === 'w');
+    clockB.classList.toggle('active', running && game.turn === 'b');
+    clockW.classList.toggle('low', clock.w < 60000);
+    clockB.classList.toggle('low', clock.b < 60000);
+    clockW.classList.toggle('flagged', !!flag && flag.loser === 'w');
+    clockB.classList.toggle('flagged', !!flag && flag.loser === 'b');
+  }
 
   function view(r,c){ return flipped ? {r:7-r, c:7-c} : {r:r,c:c}; }
   function model(vr,vc){ return flipped ? {r:7-vr, c:7-vc} : {r:vr,c:vc}; }
@@ -125,8 +184,11 @@
       })(vr,vc);
     }
     // status
-    statusEl.classList.toggle('check', !!st.inCheck && !st.over);
-    if (st.over){
+    statusEl.classList.toggle('check', !!st.inCheck && !st.over && !flag);
+    if (flag){
+      if (flag.draw) statusEl.textContent = 'TEMPO ESGOTADO — empate (adversário só com o rei)';
+      else statusEl.textContent = 'TEMPO ESGOTADO — ' + (flag.winner === 'w' ? 'Brancas' : 'Pretas') + ' vencem!';
+    } else if (st.over){
       if (st.reason==='checkmate') statusEl.textContent = 'XEQUE-MATE — ' + (st.winner==='w'?'Brancas':'Pretas') + ' vencem!';
       else statusEl.textContent = REASONS[st.reason] || 'Fim de jogo';
     } else if (st.reason==='check'){
@@ -144,11 +206,13 @@
     var caps = game.captured();
     capW.textContent = caps.byWhite.length ? caps.byWhite.map(function(t){return UNI.b[t];}).join(' ') : '—';
     capB.textContent = caps.byBlack.length ? caps.byBlack.map(function(t){return UNI.w[t];}).join(' ') : '—';
+    updateClockUI();
   }
 
+  function gameEnded(){ return flag || game.status().over; }
+
   function onTap(e){
-    var st = game.status();
-    if (st.over) return;
+    if (gameEnded()) return;
     var r = +e.currentTarget.dataset.r, c = +e.currentTarget.dataset.c;
     var p = game.board[r][c];
     if (sel){
@@ -167,7 +231,7 @@
 
   function doMove(fr,fc,tr,tc,promo){
     var mv = game.makeMove(fr,fc,tr,tc,promo);
-    if (mv){ lastMove = mv; }
+    if (mv){ lastMove = mv; clockStarted = true; lastTick = Date.now(); }
     sel=null; legalCache=[];
     render();
   }
@@ -183,10 +247,11 @@
     ov.style.display='flex';
   }
 
-  document.getElementById('btnNew').onclick=function(){ game.reset(); sel=null; legalCache=[]; lastMove=null; render(); };
-  document.getElementById('btnUndo').onclick=function(){ game.undo(); sel=null; legalCache=[]; lastMove=null; render(); };
+  document.getElementById('btnNew').onclick=function(){ game.reset(); sel=null; legalCache=[]; lastMove=null; clock={w:CLOCK_MS,b:CLOCK_MS}; clockStarted=false; flag=null; lastTick=Date.now(); render(); };
+  document.getElementById('btnUndo').onclick=function(){ if (flag) return; game.undo(); sel=null; legalCache=[]; lastMove=null; render(); };
   document.getElementById('btnFlip').onclick=function(){ flipped=!flipped; render(); };
   document.getElementById('btnBack').onclick=function(){ window.location.href='../index.html'; };
+  setInterval(tick, 200);
   render();
 })();
 </script>
