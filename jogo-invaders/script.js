@@ -12,6 +12,7 @@ const SHIP_W = 36, SHIP_H = 14, SHIP_Y = H - 34;
 
 let shipX, invaders, bullets, enemyBullets;
 let score, lives, level, invDir, invSpeed, lastEnemyShot;
+let dropStep = 14, bannerTicks = 0;
 let started = false, paused = false, raf = null, lastTime = 0;
 let moveLeft = false, moveRight = false, lastTouch = 0;
 
@@ -22,6 +23,7 @@ function reset(all = true) {
   enemyBullets = [];
   buildWave();
   started = true; paused = false;
+  bannerTicks = 0;
   overlay.classList.add("hidden");
   scoreEl.textContent = score;
   livesEl.textContent = lives;
@@ -34,15 +36,17 @@ function reset(all = true) {
 
 function buildWave() {
   invaders = [];
-  const cols = 7, rows = 4;
+  // +1 fileira a cada 2 fases (máx 6)
+  const cols = 7, rows = 4 + Math.min(Math.floor((level - 1) / 2), 2);
   const iw = 30, ih = 20, gapX = 14, gapY = 14;
   const totalW = cols * iw + (cols - 1) * gapX;
   const x0 = (W - totalW) / 2;
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++)
-      invaders.push({ x: x0 + c * (iw + gapX), y: 50 + r * (ih + gapY), w: iw, h: ih, alive: true, row: r });
+      invaders.push({ x: x0 + c * (iw + gapX), y: 50 + r * (ih + gapY), w: iw, h: ih, alive: true, row: r % 4 });
   invDir = 1;
   invSpeed = 20 + level * 8;
+  dropStep = 14 + Math.min(level, 5) * 2;
 }
 
 function fire() {
@@ -60,6 +64,7 @@ function loop(t) {
 }
 
 function step(dt, t) {
+  if (bannerTicks > 0) bannerTicks--;
   // nave
   const shipSpeed = 220;
   if (moveLeft) shipX = Math.max(0, shipX - shipSpeed * dt);
@@ -73,7 +78,7 @@ function step(dt, t) {
   for (const i of alive) { minX = Math.min(minX, i.x); maxX = Math.max(maxX, i.x + i.w); }
   if ((invDir > 0 && maxX + invSpeed * dt > W - 6) || (invDir < 0 && minX - invSpeed * dt < 6)) {
     invDir *= -1;
-    for (const i of alive) i.y += 14;
+    for (const i of alive) i.y += dropStep;
   } else {
     for (const i of alive) i.x += invDir * invSpeed * dt;
   }
@@ -98,17 +103,30 @@ function step(dt, t) {
     buildWave();
     bullets = [];
     enemyBullets = [];
+    bannerTicks = 150; // ~2,5s de aviso da fase nova
     return;
   }
-  // tiro inimigo
+  // tiro inimigo (rajada dupla a partir da fase 3, mirado a partir da 2)
   const interval = Math.max(1100 - level * 120, 350);
   if (t - lastEnemyShot > interval && alive.length) {
     lastEnemyShot = t;
-    const shooter = alive[Math.floor(Math.random() * alive.length)];
-    enemyBullets.push({ x: shooter.x + shooter.w / 2 - 2, y: shooter.y + shooter.h, w: 4, h: 10 });
+    const shots = level >= 3 ? 2 : 1;
+    const pool = alive.slice();
+    for (let s = 0; s < shots && pool.length; s++) {
+      const shooter = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      let vx = 0;
+      if (level >= 2) {
+        vx = (shipX + SHIP_W / 2 - (shooter.x + shooter.w / 2)) * 0.4;
+        vx = Math.max(-130, Math.min(130, vx));
+      }
+      enemyBullets.push({ x: shooter.x + shooter.w / 2 - 2, y: shooter.y + shooter.h, w: 4, h: 10, vx });
+    }
   }
-  for (const b of enemyBullets) b.y += (140 + level * 20) * dt;
-  enemyBullets = enemyBullets.filter((b) => b.y < H);
+  for (const b of enemyBullets) {
+    b.y += (140 + level * 20) * dt;
+    b.x += (b.vx || 0) * dt;
+  }
+  enemyBullets = enemyBullets.filter((b) => b.y < H && b.x > -10 && b.x < W + 10);
   for (const b of enemyBullets) {
     if (b.x < shipX + SHIP_W && b.x + b.w > shipX && b.y < SHIP_Y + SHIP_H && b.y + b.h > SHIP_Y) {
       enemyBullets = [];
@@ -172,6 +190,23 @@ function draw() {
   for (const b of bullets) ctx.fillRect(b.x, b.y, b.w, b.h);
   ctx.fillStyle = "#ff3355";
   for (const b of enemyBullets) ctx.fillRect(b.x, b.y, b.w, b.h);
+  // aviso de fase nova
+  if (bannerTicks > 0) {
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(0, H / 2 - 26, W, 52);
+    ctx.fillStyle = "#ff3355";
+    ctx.font = "bold 20px 'Courier New', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("⚠ FASE " + level + " ⚠", W / 2, H / 2 - 2);
+    ctx.fillStyle = "#9dffb8";
+    ctx.font = "bold 13px 'Courier New', monospace";
+    ctx.fillText(
+      level >= 3 ? "RAJADA DUPLA + TIRO MIRADO!" :
+      level >= 2 ? "CUIDADO: TIRO MIRADO!" :
+      "ELES ESTÃO MAIS RÁPIDOS!",
+      W / 2, H / 2 + 18
+    );
+  }
 }
 
 // teclado
