@@ -84,6 +84,30 @@ body {
 #status svg { width: 24px; height: 24px; }
 .cell svg { width: 72%; height: 72%; pointer-events: none; }
 
+.diffbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.diff {
+  flex: 1;
+  background: #000;
+  color: #9dffb8;
+  border: 2px solid #2f5f2f;
+  border-radius: 6px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.diff.active {
+  color: #33ff66;
+  border-color: #33ff66;
+  background: #062b12;
+  box-shadow: 0 0 8px rgba(51, 255, 102, 0.4);
+}
 .board {
   display: grid;
   grid-template-columns: repeat(9, 1fr);

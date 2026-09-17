@@ -7,7 +7,8 @@ const overlayTitle = document.getElementById("overlay-title");
 const btnMode = document.getElementById("btn-mode");
 const btnNew = document.getElementById("btn-new");
 
-const N = 9, MINES = 10;
+const N = 9;
+let MINES = 10;
 
 // Ícones SVG próprios (estilo arcade verde do jogo)
 const FACE_OK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#062b12" stroke="#33ff66" stroke-width="2"/><circle cx="9" cy="10" r="1.4" fill="#33ff66"/><circle cx="15" cy="10" r="1.4" fill="#33ff66"/><path d="M7.5 14.5c1.2 2 2.8 3 4.5 3s3.3-1 4.5-3" fill="none" stroke="#33ff66" stroke-width="1.8" stroke-linecap="round"/></svg>';
@@ -194,6 +195,14 @@ btnMode.addEventListener("click", () => {
 btnNew.addEventListener("click", reset);
 overlay.addEventListener("click", reset);
 
+// seletor de dificuldade (nº de bombas)
+const diffBtns = document.querySelectorAll(".diff");
+diffBtns.forEach((b) => b.addEventListener("click", () => {
+  MINES = +b.dataset.mines;
+  diffBtns.forEach((x) => x.classList.toggle("active", x === b));
+  reset();
+}));
+
 document.addEventListener("keydown", (e) => {
   const k = e.key;
   if (k === "Escape") { window.location.href = "../index.html"; return; }
@@ -202,4 +211,5 @@ document.addEventListener("keydown", (e) => {
 });
 
 let flagMode = false;
+btnMode.textContent = "⛏ CAVAR";
 reset();
