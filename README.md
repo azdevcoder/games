@@ -18,6 +18,7 @@ Coleção de jogos web simples (HTML/CSS/JS puro, sem dependências, funciona of
 - `jogo-tetris/` — Tetris (10x20, 7 peças, níveis, próxima peça, recorde, touch + teclado)
 - `jogo-truco/` — Truco paulista vs bot (vira e manilha, melhor de 3 vazas, truco/6/9/12, mão de 11, mão de ferro às cegas, partida até 12; bot com 3 níveis)
 - `jogo-cacheta/` — Cacheta/pife vs bot (comprar do monte/descarte, trincas e sequências, batida automática, pontos da madeira do perdedor, primeiro aos 100; bot com 3 níveis)
+- `jogo-poker/` — Texas Hold'em vs bot (heads-up, blinds 1/2, apostas fixas 2/4, dealer alterna; bot com 3 níveis usa Monte Carlo + pot odds + blefe)
 
 ## Rodar
 - Abra `index.html` no navegador e escolha um jogo (ou abra o `index.html` de cada pasta).
