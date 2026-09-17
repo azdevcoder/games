@@ -1,0 +1,116 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0a0a;
+  color: #33ff66;
+  font-family: "Courier New", Courier, monospace;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.cabinet {
+  background: #111;
+  border: 4px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 0 40px rgba(51, 255, 102, 0.15);
+  width: min(92vw, 460px);
+}
+
+.hud { text-align: center; }
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-shadow: 0 0 8px #33ff66;
+  margin-bottom: 8px;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  background: #000;
+  border: 2px solid #33ff66;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+}
+
+.screen-wrap {
+  position: relative;
+  background: #000;
+  border: 3px solid #33ff66;
+  line-height: 0;
+  overflow: hidden;
+}
+
+/* scanlines CRT */
+.screen-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.25) 4px
+  );
+}
+
+canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  line-height: 1.4;
+  text-align: center;
+  padding: 20px;
+  font-weight: bold;
+}
+
+.overlay.hidden { display: none; }
+
+#overlay-title { font-size: 20px; text-shadow: 0 0 8px #33ff66; }
+
+.hint { font-size: 12px; font-weight: normal; opacity: 0.9; }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #9dffb8;
+}
+
+/* tela cheia */
+.cabinet:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.cabinet:fullscreen .screen-wrap {
+  width: min(90vmin, 700px);
+}

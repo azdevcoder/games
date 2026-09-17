@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNAKE RETRO</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="cabinet" id="cabinet">
+    <header class="hud">
+      <div class="title">◉ SNAKE RETRO</div>
+      <div class="stats">
+        <span>PONTOS <b id="score">0</b></span>
+        <span>RECORDE <b id="hiscore">0</b></span>
+        <span>VEL <b id="speed">1x</b></span>
+      </div>
+    </header>
+
+    <div class="screen-wrap">
+      <canvas id="game" width="400" height="400"></canvas>
+      <div id="overlay" class="overlay">
+        <p id="overlay-title">APERTE → PARA COMEÇAR</p>
+        <p class="hint">SETAS movem · R reinicia · V velocidade · T tela cheia · ENTER/ESPAÇO pausa</p>
+      </div>
+    </div>
+
+    <footer class="controls">
+      <span>⬆⬇⬅➡ mover</span>
+      <span><b>R</b> reinicia</span>
+      <span><b>V</b> velocidade</span>
+      <span><b>T</b> tela cheia</span>
+      <span><b>ENTER/ESPAÇO</b> pausa</span>
+    </footer>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
