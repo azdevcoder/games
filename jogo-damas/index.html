@@ -26,6 +26,7 @@
   .sq.last{box-shadow:inset 0 0 0 3px #f7ec59aa;}
   .sq.must{box-shadow:inset 0 0 0 3px #ff7043;}
   .sq svg.dsvg{width:82%; height:82%; pointer-events:none; filter:drop-shadow(0 2px 2px #0009);}
+  .minid{width:20px; height:20px; vertical-align:middle;}
   .dot{position:absolute; width:26%; height:26%; border-radius:50%; background:#f7ec59cc; pointer-events:none;}
   .dot.cap{background:#ff3b30dd; width:34%; height:34%; box-shadow:0 0 0 3px #ff3b3055;}
   .coord{position:absolute; font-size:10px; font-weight:bold; opacity:.85; pointer-events:none;}
@@ -51,6 +52,27 @@
 </style>
 </head>
 <body>
+<!--SPRITE-START-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<linearGradient id="dW" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#e6dabd"/><stop offset="1" stop-color="#a89468"/>
+</linearGradient>
+<linearGradient id="dB" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#6a6a6a"/><stop offset=".55" stop-color="#232323"/><stop offset="1" stop-color="#000000"/>
+</linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#c8920a"/>
+</linearGradient>
+<g id="geo-disc"><circle cx="22" cy="22" r="19"/><circle cx="22" cy="22" r="13.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".6"/><ellipse cx="16" cy="14" rx="6" ry="3.2" fill="#ffffff" opacity=".45" stroke="none"/></g>
+<g id="geo-crown" fill="url(#gold)" stroke="#7a5a00" stroke-width="1.2" stroke-linejoin="round"><path d="M13 28 L12 17 L17 21 L22 14 L27 21 L32 17 L31 28 Z"/><circle cx="12" cy="15.5" r="1.7"/><circle cx="22" cy="12.3" r="1.7"/><circle cx="32" cy="15.5" r="1.7"/></g>
+</defs>
+<symbol id="dw" viewBox="0 0 44 44"><use href="#geo-disc" fill="url(#dW)" stroke="#5a4a33" stroke-width="2" color="#5a4a33"/></symbol>
+<symbol id="db" viewBox="0 0 44 44"><use href="#geo-disc" fill="url(#dB)" stroke="#cfc0a0" stroke-width="2" color="#cfc0a0"/></symbol>
+<symbol id="dwk" viewBox="0 0 44 44"><use href="#geo-disc" fill="url(#dW)" stroke="#5a4a33" stroke-width="2" color="#5a4a33"/><use href="#geo-crown"/></symbol>
+<symbol id="dbk" viewBox="0 0 44 44"><use href="#geo-disc" fill="url(#dB)" stroke="#cfc0a0" stroke-width="2" color="#cfc0a0"/><use href="#geo-crown"/></symbol>
+</svg>
+<!--SPRITE-END-->
 <header>
   <h1>⚫ Damas Brasileiras ⚪</h1>
   <p>Captura obrigatória · maioria · dama voadora · 2 jogadores ou bot com 5 níveis · relógio 30 min cada</p>
@@ -207,23 +229,12 @@
     // capturadas
     var n=game.countPieces(), j;
     var cw='', cb='';
-    for(j=0;j<12-n.b;j++) cw+='● ';
-    for(j=0;j<12-n.w;j++) cb+='● ';
-    capW.textContent=cw||'—'; capB.textContent=cb||'—';
+    for(j=0;j<12-n.b;j++) cw+='<svg class="minid" viewBox="0 0 44 44"><use href="#db"/></svg> ';
+    for(j=0;j<12-n.w;j++) cb+='<svg class="minid" viewBox="0 0 44 44"><use href="#dw"/></svg> ';
+    capW.innerHTML=cw||'—'; capB.innerHTML=cb||'—';
     levelEl.disabled=(botColor()===null);
     updateClockUI();
-    fitCrowns();
   }
-
-  function fitCrowns(){
-    var sq=boardEl.querySelector('.sq');
-    if(!sq) return;
-    var s=Math.floor(sq.clientWidth*0.5);
-    if(!s||s<6) return;
-    var els=boardEl.querySelectorAll('.cr');
-    for(var i=0;i<els.length;i++) els[i].style.fontSize=s+'px';
-  }
-  window.addEventListener('resize',fitCrowns);
 
   function onTap(r,c){
     if(game.status().over||flag||botThinking) return;
