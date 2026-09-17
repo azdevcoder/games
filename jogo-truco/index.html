@@ -44,7 +44,7 @@
   <div class="foe-hand" id="foeHand"></div>
   <div class="mesa">
     <div class="slot" id="slotP"><small>VOCÊ</small></div>
-    <div style="font-size:12px;color:#ffe9a8" id="viraLbl"></div>
+    <div style="font-size:12px;color:#ffe9a8"><small>VIRA</small><div id="viraLbl" style="margin-top:4px"></div></div>
     <div class="slot" id="slotB"><small>BOT</small></div>
   </div>
   <div id="status">Embaralhando…</div>
@@ -106,7 +106,7 @@
     document.getElementById('sB').textContent = sB;
     document.getElementById('sV').textContent = hand.pending ? hand.pending.level : hand.stake;
     document.getElementById('info').textContent = 'Vira: ' + hand.vira.r + hand.vira.suit.s + ' · Manilha: ' + hand.man + (hand.ferro ? ' · MÃO DE FERRO (às cegas!)' : '') + ' · Vazas: você ' + wins('p') + ' × ' + wins('b') + ' bot';
-    document.getElementById('viraLbl').innerHTML = 'vira<br><b>' + hand.vira.r + hand.vira.suit.s + '</b>';
+    document.getElementById('viraLbl').innerHTML = cardHTML(hand.vira);
     var fh = '';
     for (var i = 0; i < hand.b.length; i++) fh += hand.b[i].played ? '' : cardHTML({ hidden: true });
     document.getElementById('foeHand').innerHTML = fh || '<span style="font-size:12px;color:#ffffff88">bot sem cartas</span>';
